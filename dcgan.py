@@ -178,7 +178,7 @@ def generate(BATCH_SIZE, nice=False):
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-m", "--mode", choices=["train", "generate"], type=str)
+    parser.add_argument("-m", "--mode", choices=["train", "generate"], type=str, required=True)
     parser.add_argument("-b", "--batch_size", type=int, default=128)
     parser.add_argument("-d", "--dataset", choices=["mnist", "cifar10", "lumps"], default="lumps", type= str)
     parser.add_argument("-n", "--nice", dest="nice", action="store_true")
