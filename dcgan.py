@@ -16,6 +16,7 @@ from keras.optimizers import SGD
 from keras.datasets import mnist, cifar10
 import numpy as np
 from PIL import Image
+from datetime import datetime
 import argparse
 import math
 import os
@@ -96,7 +97,8 @@ def load_data(dataset, test_percentage=15):
     return (X_train, y_train), (X_test, y_test)
 
 
-def train(BATCH_SIZE, dataset="mnist"):
+def train(BATCH_SIZE, dataset="mnist", epochs=100):
+    # Load data from chosen dataset
     if dataset == "mnist" or dataset == "cifar10":
         if dataset == "mnist":
             (X_train, y_train), (X_test, y_test) = mnist.load_data()
@@ -115,12 +117,13 @@ def train(BATCH_SIZE, dataset="mnist"):
     # Create folder where we will save all images
     now = datetime.now()
     date = "{} {:02d}:{:02d}:{:02d}".format(now.date(), now.hour, now.minute, now.second)
-    folder = "training_dataset-{}_batch-size-{}_{}".format(dataset, BATCH_SIZE, date)
+    location = "training_dataset-{}_batch-size-{}_{}".format(dataset, BATCH_SIZE, date)
     try:
-        os.makedirs(folder)
+        os.makedirs(location)
     except OSError as e:
         pass  # The directory already exists
 
+    # Create models G and D
     d = discriminator_model()
     g = generator_model()
     d_on_g = generator_containing_discriminator(g, d)
@@ -130,30 +133,61 @@ def train(BATCH_SIZE, dataset="mnist"):
     d_on_g.compile(loss='binary_crossentropy', optimizer=g_optim)
     d.trainable = True
     d.compile(loss='binary_crossentropy', optimizer=d_optim)
-    for epoch in range(100):
-        print("Epoch is", epoch)
-        print("Number of batches", int(X_train.shape[0]/BATCH_SIZE))
-        for index in range(int(X_train.shape[0]/BATCH_SIZE)):
+
+    # Create some variables to print nicely and save with best format
+    batches = int(X_train.shape[0]/BATCH_SIZE)  # num batches every epoch
+    len_batch = len(str(batches - 1))  # max num digits of a batch (used for printing)
+    len_epoch = len(str(epochs - 1))  # max num digits of an epoch (used for printing)
+    d_str = "Epoch: {{0:0{}d}} / {}.   Batch: {{0:0{}d}} / {}.   D loss: {{}}".format(len_epoch, epochs, len_batch, batches)
+    g_str = "Epoch: {{0:0{}d}} / {}.   Batch: {{0:0{}d}} / {}.   G loss: {{}}".format(len_epoch, epochs, len_batch, batches)
+    e_str = "{{0:0{}d}}".format(len_epoch)
+
+    # Discriminate and Generate iteratively for all epochs and batches
+    d_losses = []
+    g_losses = []
+    for epoch in range(epochs):
+        for batch in range(batches):
+            # Generate fake images with generator
             noise = np.random.uniform(-1, 1, size=(BATCH_SIZE, 100))
-            image_batch = X_train[index*BATCH_SIZE:(index+1)*BATCH_SIZE]
-            generated_images = g.predict(noise, verbose=0)
-            if index % 20 == 0:
-                image = combine_images(generated_images)
-                image = image*127.5+127.5
-                Image.fromarray(image.astype(np.uint8)).save(
-                    "{}/{}_{}.png".format(folder, epoch, index))
-            X = np.concatenate((image_batch, generated_images))
+            X_fake = g.predict(noise, verbose=0)
+            # Get batch real training data
+            X_real = X_train[batch*BATCH_SIZE:(batch+1)*BATCH_SIZE]
+            # Create dataset with labels: first half is real (1), second half is fake (0)
+            X = np.concatenate((X_real, X_fake))
             y = [1] * BATCH_SIZE + [0] * BATCH_SIZE
+            # Calculate discriminator loss from dataset X and y
+            d.trainable = True
             d_loss = d.train_on_batch(X, y)
-            print("batch %d d_loss : %f" % (index, d_loss))
+            d_losses.append(d_loss)
+
+            # Generate fake images with generator
             noise = np.random.uniform(-1, 1, (BATCH_SIZE, 100))
+            # Calculate generator loss from noise
             d.trainable = False
             g_loss = d_on_g.train_on_batch(noise, [1] * BATCH_SIZE)
-            d.trainable = True
-            print("batch %d g_loss : %f" % (index, g_loss))
-            if index % 10 == 9:
-                g.save_weights('generator', True)
-                d.save_weights('discriminator', True)
+            g_losses.append(g_loss)
+
+            # Save an image and print some feedback messages
+            if batch % 20 == 0:
+                # Print feedback messages for G and D
+                print(d_str.format(epoch, batch, d_loss))
+                print(g_str.format(epoch, batch, g_loss))
+                # Save sample image
+                image = combine_images(X_fake)
+                image = image * 127.5 + 127.5
+                filename = "{}/{0:03d}_{0:03d}.png".format(location, epoch, batch)
+                Image.fromarray(image.astype(np.uint8)).save(filename)
+
+        # Save weights at the end of every epoch
+        g.save_weights('generator.h5', True)
+        d.save_weights('discriminator.h5', True)
+        # Save D and G losses
+        with open(location + "/result.yaml", "a") as f:
+            f.write("epoch" + e_str.format(epoch) + ":\n")
+            f.write("  g_loss: {}\n".format(g_loss))
+            f.write("  d_loss: {}\n".format(d_loss))
+            f.write("  g_losses: {}\n".format(g_losses))
+            f.write("  d_losses: {}\n".format(d_losses))
 
 
 def generate(BATCH_SIZE, nice=False):
