@@ -18,6 +18,7 @@ import numpy as np
 from PIL import Image
 import argparse
 import math
+import os
 
 
 def generator_model():
@@ -111,6 +112,15 @@ def train(BATCH_SIZE, dataset="mnist"):
         raise KeyError("Unknown dataset: {}".format(dataset))
     X_train = X_train[:, :, :, None]
 
+    # Create folder where we will save all images
+    now = datetime.now()
+    date = "{} {:02d}:{:02d}:{:02d}".format(now.date(), now.hour, now.minute, now.second)
+    folder = "training_dataset-{}_batch-size-{}_{}".format(dataset, BATCH_SIZE, date)
+    try:
+        os.makedirs(folder)
+    except OSError as e:
+        pass  # The directory already exists
+
     d = discriminator_model()
     g = generator_model()
     d_on_g = generator_containing_discriminator(g, d)
@@ -131,7 +141,7 @@ def train(BATCH_SIZE, dataset="mnist"):
                 image = combine_images(generated_images)
                 image = image*127.5+127.5
                 Image.fromarray(image.astype(np.uint8)).save(
-                    str(epoch)+"_"+str(index)+".png")
+                    "{}/{}_{}.png".format(folder, epoch, index))
             X = np.concatenate((image_batch, generated_images))
             y = [1] * BATCH_SIZE + [0] * BATCH_SIZE
             d_loss = d.train_on_batch(X, y)
