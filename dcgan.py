@@ -84,36 +84,32 @@ def combine_images(generated_images):
     return image
 
 
-def load_data(dataset, test_percentage=15):
+def load_data(dataset):
     if dataset == "lumps":
         path = "./datasets/lumps/lumps.npy"
+        X_train = np.load(path)  # We use all data for training
+        min_val = X_train.min()
+        max_val = X_train.max()
+    elif dataset == "mnist":
+        (X_train, y_train), (X_test, y_test) = mnist.load_data()
+        min_val = 0.0
+        max_val = 255.0
+    elif dataset == "cifar10":
+        (X_train, y_train), (X_test, y_test) = cifar10.load_data()
+        min_val = 0.0
+        max_val = 255.0
     else:
         raise KeyError("Unknown dataset: {}".format(dataset))
-    data = np.load(path)
-    num_samples = data.shape[0]
-    num_test = num_samples * test_percentage // 100
-    X_test = data[:num_test]
-    y_test = np.ones(X_test.shape[0])
-    X_train = data[num_test:]
-    y_train = np.ones(X_train.shape[0])
-    return (X_train, y_train), (X_test, y_test)
+    # Normalize data: All number will go from -1 to +1
+    X_train = (X_train.astype(np.float32) - ((min_val + max_val) / 2.0)) / (max_val - min_val)
+    if len(X_train.shape) < 4:
+        X_train = X_train[:, :, :, None]
+    return X_train
 
 def train(batch_size=128, dataset="mnist", epochs=100, noise_size=100):
     # Load data from chosen dataset
-    if dataset == "mnist" or dataset == "cifar10":
-        if dataset == "mnist":
-            (X_train, y_train), (X_test, y_test) = mnist.load_data()
-        else:
-            (X_train, y_train), (X_test, y_test) = cifar10.load_data()
-        X_train = (X_train.astype(np.float32) - 127.5)/127.5
-    elif dataset == "lumps":
-        (X_train, y_train), (X_test, y_test) = load_data("lumps", test_percentage=0)
-        min_val = X_train.min()
-        vals_diff = (X_train.max() - min_val) / 2
-        X_train = (X_train.astype(np.float32) + min_val - vals_diff) / vals_diff
-    else:
-        raise KeyError("Unknown dataset: {}".format(dataset))
-    X_train = X_train[:, :, :, None]
+    X_train = load_data(dataset)
+    print("Shape of '{}' dataset: {}".format(dataset, X_train.shape))
 
     # Create folder where we will save all images
     now = datetime.now()
