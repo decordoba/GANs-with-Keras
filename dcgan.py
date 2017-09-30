@@ -116,7 +116,7 @@ def train(BATCH_SIZE, dataset="mnist", epochs=100):
 
     # Create folder where we will save all images
     now = datetime.now()
-    date = "{} {:02d}:{:02d}:{:02d}".format(now.date(), now.hour, now.minute, now.second)
+    date = "{}_{:02d}:{:02d}:{:02d}".format(now.date(), now.hour, now.minute, now.second)
     location = "training_dataset-{}_batch-size-{}_{}".format(dataset, BATCH_SIZE, date)
     try:
         os.makedirs(location)
@@ -138,9 +138,9 @@ def train(BATCH_SIZE, dataset="mnist", epochs=100):
     batches = int(X_train.shape[0]/BATCH_SIZE)  # num batches every epoch
     len_batch = len(str(batches - 1))  # max num digits of a batch (used for printing)
     len_epoch = len(str(epochs - 1))  # max num digits of an epoch (used for printing)
-    d_str = "Epoch: {{0:0{}d}} / {}.   Batch: {{0:0{}d}} / {}.   D loss: {{}}".format(len_epoch, epochs, len_batch, batches)
-    g_str = "Epoch: {{0:0{}d}} / {}.   Batch: {{0:0{}d}} / {}.   G loss: {{}}".format(len_epoch, epochs, len_batch, batches)
-    e_str = "{{0:0{}d}}".format(len_epoch)
+    d_str = "Epoch: {{0:0{}d}}/{}.   Batch: {{:0{}d}}/{}.   D loss: {{:f}}".format(len_epoch, epochs, len_batch, batches)
+    g_str = "Epoch: {{0:0{}d}}/{}.   Batch: {{:0{}d}}/{}.   G loss: {{:f}}".format(len_epoch, epochs, len_batch, batches)
+    e_str = "{{:0{}d}}".format(len_epoch)
 
     # Discriminate and Generate iteratively for all epochs and batches
     d_losses = []
@@ -175,7 +175,7 @@ def train(BATCH_SIZE, dataset="mnist", epochs=100):
                 # Save sample image
                 image = combine_images(X_fake)
                 image = image * 127.5 + 127.5
-                filename = "{}/{0:03d}_{0:03d}.png".format(location, epoch, batch)
+                filename = "{}/{:03d}_{:03d}.png".format(location, epoch, batch)
                 Image.fromarray(image.astype(np.uint8)).save(filename)
 
         # Save weights at the end of every epoch
