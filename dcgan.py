@@ -22,41 +22,43 @@ import math
 import os
 
 
-def generator_model():
+def generator_model(input_size, output_shape):
+    # input_size = size of random input for every batch, output_shape = shape of output image
+    # assumptions: output image is a square image and the side is a multiple of 4
+    # the reason for the multiple of 4 is because we do upsampling twice, so we multiply by 4
+    # TODO: depth != 1???
+    if output_shape[0] != output_shape[1]:
+        raise ValueError("This generator only returns square images")
+    side = output_shape[0]
+    if side %4 != 0:
+        raise ValueError("This generator only returns images whose side is a multiple of 4")
+    s4 = side // 4
     model = Sequential()
-    model.add(Dense(input_dim=100, output_dim=1024))
-    model.add(Activation('tanh'))
-    model.add(Dense(128*7*7))
+    model.add(Dense(units=1024, activation="tanh", input_shape=(input_size,)))
+    model.add(Dense(units=128 * s4 * s4))
     model.add(BatchNormalization())
-    model.add(Activation('tanh'))
-    model.add(Reshape((7, 7, 128), input_shape=(128*7*7,)))
+    model.add(Activation("tanh"))
+    model.add(Reshape((s4, s4, 128), input_shape=(128 * s4 * s4,)))
     model.add(UpSampling2D(size=(2, 2)))
-    model.add(Conv2D(64, (5, 5), padding='same'))
-    model.add(Activation('tanh'))
+    model.add(Conv2D(filters=64, kernel_size=(5, 5), activation="tanh", padding="same"))
     model.add(UpSampling2D(size=(2, 2)))
-    model.add(Conv2D(1, (5, 5), padding='same'))
-    model.add(Activation('tanh'))
-    return model
+    model.add(Conv2D(filters=1, kernel_size=(5, 5), activation="tanh", padding="same"))
+    return model  # Output: 1 image
 
 
-def discriminator_model():
+def discriminator_model(input_shape):
+    # input_shape is size of input image: (width, height, depth). i.e. mnist: (28, 28, 1)
+    print("Shape", input_shape)
     model = Sequential()
-    model.add(
-            Conv2D(64, (5, 5),
-            padding='same',
-            input_shape=(28, 28, 1))
-            )
-    model.add(Activation('tanh'))
+    model.add(Conv2D(filters=64, kernel_size=(5, 5), padding="same", activation="tanh",
+                     input_shape=input_shape))
     model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Conv2D(128, (5, 5)))
-    model.add(Activation('tanh'))
+    model.add(Conv2D(filters=128, kernel_size=(5, 5), activation="tanh"))
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Flatten())
-    model.add(Dense(1024))
-    model.add(Activation('tanh'))
-    model.add(Dense(1))
-    model.add(Activation('sigmoid'))
-    return model
+    model.add(Dense(units=1024, activation="tanh"))
+    model.add(Dense(units=1, activation="sigmoid"))
+    return model  # Output: 1 value
 
 
 def generator_containing_discriminator(g, d):
@@ -96,8 +98,7 @@ def load_data(dataset, test_percentage=15):
     y_train = np.ones(X_train.shape[0])
     return (X_train, y_train), (X_test, y_test)
 
-
-def train(BATCH_SIZE, dataset="mnist", epochs=100):
+def train(batch_size=128, dataset="mnist", epochs=100, noise_size=100):
     # Load data from chosen dataset
     if dataset == "mnist" or dataset == "cifar10":
         if dataset == "mnist":
@@ -117,15 +118,25 @@ def train(BATCH_SIZE, dataset="mnist", epochs=100):
     # Create folder where we will save all images
     now = datetime.now()
     date = "{}_{:02d}:{:02d}:{:02d}".format(now.date(), now.hour, now.minute, now.second)
-    location = "training_dataset-{}_batch-size-{}_{}".format(dataset, BATCH_SIZE, date)
+    location = "training_dataset-{}_batch-size-{}_{}".format(dataset, batch_size, date)
     try:
         os.makedirs(location)
     except OSError as e:
         pass  # The directory already exists
 
     # Create models G and D
-    d = discriminator_model()
-    g = generator_model()
+    d = discriminator_model(X_train.shape[1:])
+    g = generator_model(noise_size, X_train.shape[1:])
+    # Plot model used
+    try:
+        from keras_utils import plot_model
+        plot_model(d, "discriminator_model.png", show_shapes=True, show_layer_names=False,
+                   show_params=True)
+        plot_model(g, "generator_model.png", show_shapes=True, show_layer_names=False,
+                   show_params=True)
+    except ImportError:
+        pass
+
     d_on_g = generator_containing_discriminator(g, d)
     d_optim = SGD(lr=0.0005, momentum=0.9, nesterov=True)
     g_optim = SGD(lr=0.0005, momentum=0.9, nesterov=True)
@@ -134,12 +145,14 @@ def train(BATCH_SIZE, dataset="mnist", epochs=100):
     d.trainable = True
     d.compile(loss='binary_crossentropy', optimizer=d_optim)
 
-    # Create some variables to print nicely and save with best format
-    batches = int(X_train.shape[0]/BATCH_SIZE)  # num batches every epoch
+    # Create some variables to print nicely and save with beautiful format
+    batches = int(X_train.shape[0]/batch_size)  # num batches every epoch
     len_batch = len(str(batches - 1))  # max num digits of a batch (used for printing)
     len_epoch = len(str(epochs - 1))  # max num digits of an epoch (used for printing)
-    d_str = "Epoch: {{0:0{}d}}/{}.   Batch: {{:0{}d}}/{}.   D loss: {{:f}}".format(len_epoch, epochs, len_batch, batches)
-    g_str = "Epoch: {{0:0{}d}}/{}.   Batch: {{:0{}d}}/{}.   G loss: {{:f}}".format(len_epoch, epochs, len_batch, batches)
+    d_str = "Epoch: {{:0{}d}}/{}.   Batch: {{:0{}d}}/{}.   D loss: {{}}".format(len_epoch,
+                                                                    epochs, len_batch, batches)
+    g_str = "Epoch: {{:0{}d}}/{}.   Batch: {{:0{}d}}/{}.   G loss: {{}}".format(len_epoch,
+                                                                    epochs, len_batch, batches)
     e_str = "{{:0{}d}}".format(len_epoch)
 
     # Discriminate and Generate iteratively for all epochs and batches
@@ -148,23 +161,24 @@ def train(BATCH_SIZE, dataset="mnist", epochs=100):
     for epoch in range(epochs):
         for batch in range(batches):
             # Generate fake images with generator
-            noise = np.random.uniform(-1, 1, size=(BATCH_SIZE, 100))
+            noise = np.random.uniform(-1, 1, size=(batch_size, noise_size))
             X_fake = g.predict(noise, verbose=0)
             # Get batch real training data
-            X_real = X_train[batch*BATCH_SIZE:(batch+1)*BATCH_SIZE]
+            X_real = X_train[batch*batch_size:(batch+1)*batch_size]
+            print(X_real.shape, X_real.shape)
             # Create dataset with labels: first half is real (1), second half is fake (0)
             X = np.concatenate((X_real, X_fake))
-            y = [1] * BATCH_SIZE + [0] * BATCH_SIZE
+            y = [1] * batch_size + [0] * batch_size
             # Calculate discriminator loss from dataset X and y
             d.trainable = True
             d_loss = d.train_on_batch(X, y)
             d_losses.append(d_loss)
 
             # Generate fake images with generator
-            noise = np.random.uniform(-1, 1, (BATCH_SIZE, 100))
+            noise = np.random.uniform(-1, 1, (batch_size, noise_size))
             # Calculate generator loss from noise
             d.trainable = False
-            g_loss = d_on_g.train_on_batch(noise, [1] * BATCH_SIZE)
+            g_loss = d_on_g.train_on_batch(noise, [1] * batch_size)
             g_losses.append(g_loss)
 
             # Save an image and print some feedback messages
@@ -190,7 +204,7 @@ def train(BATCH_SIZE, dataset="mnist", epochs=100):
             f.write("  d_losses: {}\n".format(d_losses))
 
 
-def generate(BATCH_SIZE, nice=False):
+def generate(batch_size, nice=False):
     g = generator_model()
     g.compile(loss='binary_crossentropy', optimizer="SGD")
     g.load_weights('generator')
@@ -198,21 +212,21 @@ def generate(BATCH_SIZE, nice=False):
         d = discriminator_model()
         d.compile(loss='binary_crossentropy', optimizer="SGD")
         d.load_weights('discriminator')
-        noise = np.random.uniform(-1, 1, (BATCH_SIZE*20, 100))
+        noise = np.random.uniform(-1, 1, (batch_size*20, 100))
         generated_images = g.predict(noise, verbose=1)
         d_pret = d.predict(generated_images, verbose=1)
-        index = np.arange(0, BATCH_SIZE*20)
-        index.resize((BATCH_SIZE*20, 1))
+        index = np.arange(0, batch_size*20)
+        index.resize((batch_size*20, 1))
         pre_with_index = list(np.append(d_pret, index, axis=1))
         pre_with_index.sort(key=lambda x: x[0], reverse=True)
-        nice_images = np.zeros((BATCH_SIZE,) + generated_images.shape[1:3], dtype=np.float32)
+        nice_images = np.zeros((batch_size,) + generated_images.shape[1:3], dtype=np.float32)
         nice_images = nice_images[:, :, :, None]
-        for i in range(BATCH_SIZE):
+        for i in range(batch_size):
             idx = int(pre_with_index[i][1])
             nice_images[i, :, :, 0] = generated_images[idx, :, :, 0]
         image = combine_images(nice_images)
     else:
-        noise = np.random.uniform(-1, 1, (BATCH_SIZE, 100))
+        noise = np.random.uniform(-1, 1, (batch_size, 100))
         generated_images = g.predict(noise, verbose=1)
         image = combine_images(generated_images)
     image = image*127.5+127.5
@@ -224,7 +238,8 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-m", "--mode", choices=["train", "generate"], type=str, required=True)
     parser.add_argument("-b", "--batch_size", type=int, default=128)
-    parser.add_argument("-d", "--dataset", choices=["mnist", "cifar10", "lumps"], default="lumps", type= str)
+    parser.add_argument("-d", "--dataset", choices=["mnist", "cifar10", "lumps"], default="lumps",
+                        type= str)
     parser.add_argument("-n", "--nice", dest="nice", action="store_true")
     parser.set_defaults(nice=False)
     args = parser.parse_args()
@@ -234,6 +249,6 @@ def get_args():
 if __name__ == "__main__":
     args = get_args()
     if args.mode == "train":
-        train(BATCH_SIZE=args.batch_size, dataset=args.dataset)
+        train(batch_size=args.batch_size, dataset=args.dataset)
     elif args.mode == "generate":
-        generate(BATCH_SIZE=args.batch_size, nice=args.nice)
+        generate(batch_size=args.batch_size, nice=args.nice)
