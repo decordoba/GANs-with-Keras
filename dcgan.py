@@ -69,15 +69,14 @@ def generator_containing_discriminator(g, d):
 def combine_images(generated_images):
     num = generated_images.shape[0]
     width = int(math.sqrt(num))
-    height = int(math.ceil(float(num)/width))
+    height = int(math.ceil(float(num) / width))
     shape = generated_images.shape[1:3]
     image = np.zeros((height*shape[0], width*shape[1]),
                      dtype=generated_images.dtype)
     for index, img in enumerate(generated_images):
         i = int(index/width)
         j = index % width
-        image[i*shape[0]:(i+1)*shape[0], j*shape[1]:(j+1)*shape[1]] = \
-            img[:, :, 0]
+        image[i*shape[0]:(i+1)*shape[0], j*shape[1]:(j+1)*shape[1]] = img[:, :, 0]
     return image
 
 
@@ -104,23 +103,25 @@ def load_data(dataset):
     return X_train
 
 
-def train(batch_size=128, dataset="mnist", epochs=100, noise_size=100):
+def train(batch_size=128, dataset="mnist", epochs=100, noise_size=100, location=None):
     # Load data from chosen dataset
     X_train = load_data(dataset)
     print("Shape of '{}' dataset: {}".format(dataset, X_train.shape))
 
     # Create folder where we will save all images
-    now = datetime.now()
-    date = "{}_{:02d}:{:02d}:{:02d}".format(now.date(), now.hour, now.minute, now.second)
-    location = "training_dataset-{}_batch-size-{}_{}".format(dataset, batch_size, date)
+    if location is None:
+        now = datetime.now()
+        date = "{}_{:02d}:{:02d}:{:02d}".format(now.date(), now.hour, now.minute, now.second)
+        location = "training_dataset-{}_batch-size-{}_{}".format(dataset, batch_size, date)
     try:
         os.makedirs(location)
     except OSError as e:
         pass  # The directory already exists
 
     # Create models G and D
-    d = discriminator_model(X_train.shape[1:])
-    g = generator_model(noise_size, X_train.shape[1:])
+    input_shape = X_train.shape[1:]
+    d = discriminator_model(input_shape)  # Maps image to label
+    g = generator_model(noise_size, input_shape)  # Maps noise to image
     # Plot model used
     try:
         from keras_utils import plot_model
@@ -153,7 +154,7 @@ def train(batch_size=128, dataset="mnist", epochs=100, noise_size=100):
     d_losses = []
     g_losses = []
     for epoch in range(1, epochs + 1):
-        for batch in range(1, batches + 1):
+        for batch in range(batches):
             # Generate fake images with generator
             noise = np.random.uniform(-1, 1, size=(batch_size, noise_size))
             X_fake = g.predict(noise, verbose=0)
@@ -175,14 +176,14 @@ def train(batch_size=128, dataset="mnist", epochs=100, noise_size=100):
             g_losses.append(g_loss)
 
             # Save an image and print some feedback messages
-            if batch % 20 == 0:
+            if (batch + 1) % 20 == 0:
                 # Print feedback messages for G and D
-                print(d_str.format(epoch, batch, d_loss))
-                print(g_str.format(epoch, batch, g_loss))
+                print(d_str.format(epoch, batch + 1, d_loss))
+                print(g_str.format(epoch, batch + 1, g_loss))
                 # Save sample image
                 image = combine_images(X_fake)
                 image = image * 127.5 + 127.5
-                filename = "{}/{:03d}_{:03d}.png".format(location, epoch, batch)
+                filename = "{}/{:03d}_{:03d}.png".format(location, epoch, batch + 1)
                 Image.fromarray(image.astype(np.uint8)).save(filename)
 
         # Save weights at the end of every epoch
@@ -232,7 +233,8 @@ def get_args():
     parser.add_argument("-m", "--mode", choices=["train", "generate"], type=str, required=True)
     parser.add_argument("-b", "--batch_size", type=int, default=128)
     parser.add_argument("-d", "--dataset", choices=["mnist", "cifar10", "lumps"], default="lumps",
-                        type= str)
+                        type=str)
+    parser.add_argument("-f", "--folder", default=None, type=str)
     parser.add_argument("-n", "--nice", dest="nice", action="store_true")
     parser.set_defaults(nice=False)
     args = parser.parse_args()
@@ -242,6 +244,6 @@ def get_args():
 if __name__ == "__main__":
     args = get_args()
     if args.mode == "train":
-        train(batch_size=args.batch_size, dataset=args.dataset)
+        train(batch_size=args.batch_size, dataset=args.dataset, location=args.folder)
     elif args.mode == "generate":
         generate(batch_size=args.batch_size, nice=args.nice)
