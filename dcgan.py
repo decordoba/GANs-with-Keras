@@ -27,18 +27,16 @@ def generator_model(input_size, output_shape):
     # assumptions: output image is a square image and the side is a multiple of 4
     # the reason for the multiple of 4 is because we do upsampling twice, so we multiply by 4
     # TODO: depth != 1???
-    if output_shape[0] != output_shape[1]:
-        raise ValueError("This generator only returns square images")
-    side = output_shape[0]
-    if side %4 != 0:
-        raise ValueError("This generator only returns images whose side is a multiple of 4")
-    s4 = side // 4
+    side = (output_shape[0], output_shape[1])
+    if side[0] %4 != 0 or side[1] %4 != 0:
+        raise ValueError("This generator can only return images whose side are multiples of 4")
+    s4 = (side[0] // 4, side[1] // 4)
     model = Sequential()
     model.add(Dense(units=1024, activation="tanh", input_shape=(input_size,)))
-    model.add(Dense(units=128 * s4 * s4))
+    model.add(Dense(units=128 * s4[0] * s4[1]))
     model.add(BatchNormalization())
     model.add(Activation("tanh"))
-    model.add(Reshape((s4, s4, 128), input_shape=(128 * s4 * s4,)))
+    model.add(Reshape((s4[0], s4[1], 128), input_shape=(128 * s4[0] * s4[1],)))
     model.add(UpSampling2D(size=(2, 2)))
     model.add(Conv2D(filters=64, kernel_size=(5, 5), activation="tanh", padding="same"))
     model.add(UpSampling2D(size=(2, 2)))
@@ -48,7 +46,6 @@ def generator_model(input_size, output_shape):
 
 def discriminator_model(input_shape):
     # input_shape is size of input image: (width, height, depth). i.e. mnist: (28, 28, 1)
-    print("Shape", input_shape)
     model = Sequential()
     model.add(Conv2D(filters=64, kernel_size=(5, 5), padding="same", activation="tanh",
                      input_shape=input_shape))
@@ -106,6 +103,7 @@ def load_data(dataset):
         X_train = X_train[:, :, :, None]
     return X_train
 
+
 def train(batch_size=128, dataset="mnist", epochs=100, noise_size=100):
     # Load data from chosen dataset
     X_train = load_data(dataset)
@@ -143,8 +141,8 @@ def train(batch_size=128, dataset="mnist", epochs=100, noise_size=100):
 
     # Create some variables to print nicely and save with beautiful format
     batches = int(X_train.shape[0]/batch_size)  # num batches every epoch
-    len_batch = len(str(batches - 1))  # max num digits of a batch (used for printing)
-    len_epoch = len(str(epochs - 1))  # max num digits of an epoch (used for printing)
+    len_batch = len(str(batches))  # max num digits of a batch (used for printing)
+    len_epoch = len(str(epochs))  # max num digits of an epoch (used for printing)
     d_str = "Epoch: {{:0{}d}}/{}.   Batch: {{:0{}d}}/{}.   D loss: {{}}".format(len_epoch,
                                                                     epochs, len_batch, batches)
     g_str = "Epoch: {{:0{}d}}/{}.   Batch: {{:0{}d}}/{}.   G loss: {{}}".format(len_epoch,
@@ -154,14 +152,13 @@ def train(batch_size=128, dataset="mnist", epochs=100, noise_size=100):
     # Discriminate and Generate iteratively for all epochs and batches
     d_losses = []
     g_losses = []
-    for epoch in range(epochs):
-        for batch in range(batches):
+    for epoch in range(1, epochs + 1):
+        for batch in range(1, batches + 1):
             # Generate fake images with generator
             noise = np.random.uniform(-1, 1, size=(batch_size, noise_size))
             X_fake = g.predict(noise, verbose=0)
             # Get batch real training data
             X_real = X_train[batch*batch_size:(batch+1)*batch_size]
-            print(X_real.shape, X_real.shape)
             # Create dataset with labels: first half is real (1), second half is fake (0)
             X = np.concatenate((X_real, X_fake))
             y = [1] * batch_size + [0] * batch_size
@@ -189,8 +186,8 @@ def train(batch_size=128, dataset="mnist", epochs=100, noise_size=100):
                 Image.fromarray(image.astype(np.uint8)).save(filename)
 
         # Save weights at the end of every epoch
-        g.save_weights('generator.h5', True)
-        d.save_weights('discriminator.h5', True)
+        g.save_weights(location + '/generator.h5', True)
+        d.save_weights(location + '/discriminator.h5', True)
         # Save D and G losses
         with open(location + "/result.yaml", "a") as f:
             f.write("epoch" + e_str.format(epoch) + ":\n")
