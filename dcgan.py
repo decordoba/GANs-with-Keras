@@ -97,7 +97,7 @@ def load_data(dataset):
     else:
         raise KeyError("Unknown dataset: {}".format(dataset))
     # Normalize data: All number will go from -1 to +1
-    X_train = (X_train.astype(np.float32) - ((min_val + max_val) / 2.0)) / (max_val - min_val)
+    X_train = (X_train.astype(np.float32) - ((max_val + min_val) / 2.0)) / (max_val - min_val) * 2
     if len(X_train.shape) < 4:
         X_train = X_train[:, :, :, None]
     return X_train
@@ -122,6 +122,8 @@ def train(batch_size=128, dataset="mnist", epochs=100, noise_size=100, location=
     input_shape = X_train.shape[1:]
     d = discriminator_model(input_shape)  # Maps image to label
     g = generator_model(noise_size, input_shape)  # Maps noise to image
+    d_on_g = generator_containing_discriminator(g, d)
+
     # Plot model used
     try:
         from keras_utils import plot_model
@@ -129,10 +131,12 @@ def train(batch_size=128, dataset="mnist", epochs=100, noise_size=100, location=
                    show_params=True)
         plot_model(g, "generator_model.png", show_shapes=True, show_layer_names=False,
                    show_params=True)
+        plot_model(d_on_g, "d_on_g_model.png", show_shapes=True, show_layer_names=False,
+                   show_params=True)
     except ImportError:
         pass
 
-    d_on_g = generator_containing_discriminator(g, d)
+    # Compile models
     d_optim = SGD(lr=0.0005, momentum=0.9, nesterov=True)
     g_optim = SGD(lr=0.0005, momentum=0.9, nesterov=True)
     g.compile(loss='binary_crossentropy', optimizer="SGD")
@@ -151,9 +155,9 @@ def train(batch_size=128, dataset="mnist", epochs=100, noise_size=100, location=
     e_str = "{{:0{}d}}".format(len_epoch)
 
     # Discriminate and Generate iteratively for all epochs and batches
-    d_losses = []
-    g_losses = []
     for epoch in range(1, epochs + 1):
+        d_losses = []
+        g_losses = []
         for batch in range(batches):
             # Generate fake images with generator
             noise = np.random.uniform(-1, 1, size=(batch_size, noise_size))
