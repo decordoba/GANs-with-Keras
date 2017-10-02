@@ -108,6 +108,13 @@ def train(batch_size=128, dataset="mnist", epochs=100, noise_size=100, location=
     X_train = load_data(dataset)
     print("Shape of '{}' dataset: {}".format(dataset, X_train.shape))
 
+    # Plot real images from dataset
+    try:
+        from keras_plot import plot_images
+        plot_images(X_train)
+    except ImportError:
+        pass
+
     # Create folder where we will save all images
     if location is None:
         now = datetime.now()
@@ -122,7 +129,7 @@ def train(batch_size=128, dataset="mnist", epochs=100, noise_size=100, location=
     input_shape = X_train.shape[1:]
     d = discriminator_model(input_shape)  # Maps image to label
     g = generator_model(noise_size, input_shape)  # Maps noise to image
-    d_on_g = generator_containing_discriminator(g, d)
+    gan = generator_containing_discriminator(g, d)
 
     # Plot model used
     try:
@@ -131,16 +138,21 @@ def train(batch_size=128, dataset="mnist", epochs=100, noise_size=100, location=
                    show_params=True)
         plot_model(g, "generator_model.png", show_shapes=True, show_layer_names=False,
                    show_params=True)
-        plot_model(d_on_g, "d_on_g_model.png", show_shapes=True, show_layer_names=False,
+        plot_model(gan, "gan_model.png", show_shapes=True, show_layer_names=False,
                    show_params=True)
     except ImportError:
         pass
+    # print summary of models
+    g.summary()
+    d.summary()
+    gan.summary()
+
 
     # Compile models
     d_optim = SGD(lr=0.0005, momentum=0.9, nesterov=True)
     g_optim = SGD(lr=0.0005, momentum=0.9, nesterov=True)
     g.compile(loss='binary_crossentropy', optimizer="SGD")
-    d_on_g.compile(loss='binary_crossentropy', optimizer=g_optim)
+    gan.compile(loss='binary_crossentropy', optimizer=g_optim)
     d.trainable = True
     d.compile(loss='binary_crossentropy', optimizer=d_optim)
 
@@ -176,7 +188,7 @@ def train(batch_size=128, dataset="mnist", epochs=100, noise_size=100, location=
             noise = np.random.uniform(-1, 1, (batch_size, noise_size))
             # Calculate generator loss from noise
             d.trainable = False
-            g_loss = d_on_g.train_on_batch(noise, [1] * batch_size)
+            g_loss = gan.train_on_batch(noise, [1] * batch_size)
             g_losses.append(g_loss)
 
             # Save an image and print some feedback messages
