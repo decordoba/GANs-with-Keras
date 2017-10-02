@@ -60,18 +60,19 @@ def plot_dg(g_loss, d_loss, fig_num=0, filename=None, xaxis="Epoch", fig_clear=T
         fig.clear()
 
 
-def plot_losses(folder):
+def plot_losses(folder, filename):
     if folder is not None:
         os.chdir(folder)
+    if filename is None:
+        filename = "result.yaml"
     d_losses = []
     g_losses = []
     d_loss = []
     g_loss = []
-    with open("result.yaml") as f:
+    with open(filename) as f:
         try:
-            print("Loading data from result.yaml. This may take a while...")
+            print("Loading data from {}. This may take a while...".format(filename))
             result = yaml.load(f)
-            print("Data from result.yaml loaded")
             keys = sorted(result.keys())
             n = 0
             for i in keys:
@@ -82,13 +83,15 @@ def plot_losses(folder):
                 n += 1
                 if n % 1000 == 0:
                     print(n)
-            print("Data from result.yaml parsed")
+            print("Data from {} loaded".format(filename))
         except yaml.YAMLError as YamlError:
             print("There was an error parsing 'result.yaml'. Plotting aborted.")
             print(YamlError)
             if folder is not None:
                 os.chdir("./..")
             return
+    plot_dg(g_loss=g_losses, d_loss=d_losses, xaxis="Batch")
+    input("Press ENTER to continue")
     plot_dg(g_loss=g_losses, d_loss=d_losses, xaxis="Batch", plot_mean=50)
     input("Press ENTER to continue")
     plot_dg(g_loss=g_loss, d_loss=d_loss, xaxis="Batch", fig_clear=False, xaxis_multiplier=468)
@@ -101,10 +104,11 @@ def plot_losses(folder):
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-f", "--folder", default=None, type=str)
+    parser.add_argument("-r", "--result", default=None, type=str)
     args = parser.parse_args()
     return args
 
 
 if __name__ == "__main__":
     args = get_args()
-    plot_losses(args.folder)
+    plot_losses(args.folder, args.result)
