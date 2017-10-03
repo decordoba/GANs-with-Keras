@@ -1,0 +1,18 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# Large files that should not be in Github
+*.npy
+*.png
+*.h5
+
+# Temporary config files
+*.yaml
+
+# Folders not required
+/keras-dcgan
+/keras-adversarial
+/readings
+/.idea
+/training_dataset-*
