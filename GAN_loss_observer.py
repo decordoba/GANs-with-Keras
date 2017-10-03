@@ -60,7 +60,7 @@ def plot_dg(g_loss, d_loss, fig_num=0, filename=None, xaxis="Epoch", fig_clear=T
         fig.clear()
 
 
-def plot_losses(folder, filename):
+def plot_losses(folder, filename, save_img=False):
     if folder is not None:
         os.chdir(folder)
     if filename is None:
@@ -96,6 +96,8 @@ def plot_losses(folder, filename):
     input("Press ENTER to continue")
     plot_dg(g_loss=g_loss, d_loss=d_loss, xaxis="Batch", fig_clear=False, xaxis_multiplier=468)
     input("Press ENTER to continue")
+    if save_img:
+        plot_dg(g_loss=g_losses, d_loss=d_losses, xaxis="Batch", filename="GAN_loss.png")
 
     if folder is not None:
         os.chdir("./..")
@@ -105,10 +107,11 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-f", "--folder", default=None, type=str)
     parser.add_argument("-r", "--result", default=None, type=str)
+    parser.add_argument("-s", "--save", default=False, type=bool)
     args = parser.parse_args()
     return args
 
 
 if __name__ == "__main__":
     args = get_args()
-    plot_losses(args.folder, args.result)
+    plot_losses(args.folder, args.result, args.save)
