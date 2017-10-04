@@ -4,108 +4,49 @@
 Modified from https://github.com/jacobgil/keras-dcgan
 """
 
+from gan_models import *
 from keras.models import Sequential
-from keras.layers import Dense
-from keras.layers import Reshape
-from keras.layers.core import Activation
-from keras.layers.normalization import BatchNormalization
-from keras.layers.convolutional import UpSampling2D
-from keras.layers.convolutional import Conv2D, MaxPooling2D
-from keras.layers.core import Flatten
 from keras.optimizers import SGD
-from keras.datasets import mnist, cifar10
+from keras_utils import combine_images, plot_model, load_dataset
 import numpy as np
 from PIL import Image
 from datetime import datetime
 import argparse
-import math
 import os
 
 
-def generator_model(input_size, output_shape):
-    # input_size = size of random input for every batch, output_shape = shape of output image
-    # assumptions: output image is a square image and the side is a multiple of 4
-    # the reason for the multiple of 4 is because we do upsampling twice, so we multiply by 4
-    # TODO: depth != 1???
-    side = (output_shape[0], output_shape[1])
-    if side[0] %4 != 0 or side[1] %4 != 0:
-        raise ValueError("This generator can only return images whose side are multiples of 4")
-    s4 = (side[0] // 4, side[1] // 4)
-    model = Sequential()
-    model.add(Dense(units=1024, activation="tanh", input_shape=(input_size,)))
-    model.add(Dense(units=128 * s4[0] * s4[1]))
-    model.add(BatchNormalization())
-    model.add(Activation("tanh"))
-    model.add(Reshape((s4[0], s4[1], 128), input_shape=(128 * s4[0] * s4[1],)))
-    model.add(UpSampling2D(size=(2, 2)))
-    model.add(Conv2D(filters=64, kernel_size=(5, 5), activation="tanh", padding="same"))
-    model.add(UpSampling2D(size=(2, 2)))
-    model.add(Conv2D(filters=1, kernel_size=(5, 5), activation="tanh", padding="same"))
-    return model  # Output: 1 image
+def train(dataset="mnist", batch_size=128, epochs=100, noise_size=100, location=None,
+          generator_model=None, discriminator_model=None, g_optimizer=None,
+          d_optimizer=None, gan_optimizer=None):
+    """
+    default location: "training_dataset-{}_batch-size-{}_{}".format(dataset, batch_size, date)
+    default g_optimizer: SGD()
+    default d_optimizer: SGD(lr=0.0005, momentum=0.9, nesterov=True)
+    default gan_optimizer: SGD(lr=0.0005, momentum=0.9, nesterov=True)
+    """
+    # Set defaults
+    if d_optimizer is None:
+        d_optimizer = SGD(lr=0.0005, momentum=0.9, nesterov=True)
+    if g_optimizer is None:
+        g_optimizer = SGD()
+    if gan_optimizer is None:
+        gan_optimizer = SGD(lr=0.0005, momentum=0.9, nesterov=True)
+    if location is None:
+        now = datetime.now()
+        date = "{}_{:02d}:{:02d}:{:02d}".format(now.date(), now.hour, now.minute, now.second)
+        location = "training_dataset-{}_batch-size-{}_{}".format(dataset, batch_size, date)
+    if generator_model is None:
+        pass
 
+    # Create folder where we will save all images
+    try:
+        os.makedirs(location)
+    except OSError as e:
+        print("Error: the directory '{}' already exists.".format(location))
+        return
 
-def discriminator_model(input_shape):
-    # input_shape is size of input image: (width, height, depth). i.e. mnist: (28, 28, 1)
-    model = Sequential()
-    model.add(Conv2D(filters=64, kernel_size=(5, 5), padding="same", activation="tanh",
-                     input_shape=input_shape))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Conv2D(filters=128, kernel_size=(5, 5), activation="tanh"))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Flatten())
-    model.add(Dense(units=1024, activation="tanh"))
-    model.add(Dense(units=1, activation="sigmoid"))
-    return model  # Output: 1 value
-
-
-def generator_containing_discriminator(g, d):
-    model = Sequential()
-    model.add(g)
-    d.trainable = False
-    model.add(d)
-    return model
-
-
-def combine_images(generated_images):
-    num = generated_images.shape[0]
-    width = int(math.sqrt(num))
-    height = int(math.ceil(float(num) / width))
-    shape = generated_images.shape[1:3]
-    image = np.zeros((height*shape[0], width*shape[1]),
-                     dtype=generated_images.dtype)
-    for index, img in enumerate(generated_images):
-        i = int(index/width)
-        j = index % width
-        image[i*shape[0]:(i+1)*shape[0], j*shape[1]:(j+1)*shape[1]] = img[:, :, 0]
-    return image
-
-
-def load_data(dataset):
-    if dataset == "lumps":
-        path = "./datasets/lumps/lumps.npy"
-        X_train = np.load(path)  # We use all data for training
-        min_val = X_train.min()
-        max_val = X_train.max()
-    elif dataset == "mnist":
-        (X_train, y_train), (X_test, y_test) = mnist.load_data()
-        min_val = 0.0
-        max_val = 255.0
-    elif dataset == "cifar10":
-        (X_train, y_train), (X_test, y_test) = cifar10.load_data()
-        min_val = 0.0
-        max_val = 255.0
-    else:
-        raise KeyError("Unknown dataset: {}".format(dataset))
-    # Normalize data: All number will go from -1 to +1
-    X_train = (X_train.astype(np.float32) - ((max_val + min_val) / 2.0)) / (max_val - min_val) * 2
-    if len(X_train.shape) < 4:
-        X_train = X_train[:, :, :, None]
-    return X_train
-
-
-def train(batch_size=128, dataset="mnist", epochs=100, noise_size=100, location=None):
     # Load data from chosen dataset
-    X_train = load_data(dataset)
+    X_train = load_dataset(dataset, rng=(-1, 1))
     print("Shape of '{}' dataset: {}".format(dataset, X_train.shape))
 
     # Plot real images from dataset
@@ -115,46 +56,33 @@ def train(batch_size=128, dataset="mnist", epochs=100, noise_size=100, location=
     except ImportError:
         pass
 
-    # Create folder where we will save all images
-    if location is None:
-        now = datetime.now()
-        date = "{}_{:02d}:{:02d}:{:02d}".format(now.date(), now.hour, now.minute, now.second)
-        location = "training_dataset-{}_batch-size-{}_{}".format(dataset, batch_size, date)
-    try:
-        os.makedirs(location)
-    except OSError as e:
-        pass  # The directory already exists
-
-    # Create models G and D
+    # Create models G, D and GAN
     input_shape = X_train.shape[1:]
     d = discriminator_model(input_shape)  # Maps image to label
     g = generator_model(noise_size, input_shape)  # Maps noise to image
-    gan = generator_containing_discriminator(g, d)
+    gan = Sequential()
+    gan.add(g)
+    gan.add(d)
+
+    # Compile models G, D and GAN
+    g.compile(loss='binary_crossentropy', optimizer=g_optimizer)
+    gan.compile(loss='binary_crossentropy', optimizer=gan_optimizer)
+    d.trainable = True
+    d.compile(loss='binary_crossentropy', optimizer=d_optimizer)
 
     # Plot model used
-    try:
-        from keras_utils import plot_model
-        plot_model(d, "discriminator_model.png", show_shapes=True, show_layer_names=False,
-                   show_params=True)
-        plot_model(g, "generator_model.png", show_shapes=True, show_layer_names=False,
-                   show_params=True)
-        plot_model(gan, "gan_model.png", show_shapes=True, show_layer_names=False,
-                   show_params=True)
-    except ImportError:
-        pass
-    # print summary of models
-    g.summary()
-    d.summary()
-    gan.summary()
-
-
-    # Compile models
-    d_optim = SGD(lr=0.0005, momentum=0.9, nesterov=True)
-    g_optim = SGD(lr=0.0005, momentum=0.9, nesterov=True)
-    g.compile(loss='binary_crossentropy', optimizer="SGD")
-    gan.compile(loss='binary_crossentropy', optimizer=g_optim)
-    d.trainable = True
-    d.compile(loss='binary_crossentropy', optimizer=d_optim)
+    can_plot = True
+    can_plot &= plot_model(d, "discriminator_model.png", show_shapes=True, show_layer_names=False,
+                           show_params=True)
+    can_plot &= plot_model(g, "generator_model.png", show_shapes=True, show_layer_names=False,
+                           show_params=True)
+    can_plot &= plot_model(gan, "gan_model.png", show_shapes=True, show_layer_names=False,
+                           show_params=True)
+    if not can_plot:
+        # Print summary of models if they could not be plotted and saved
+        g.summary()
+        d.summary()
+        gan.summary()
 
     # Create some variables to print nicely and save with beautiful format
     batches = int(X_train.shape[0]/batch_size)  # num batches every epoch
@@ -215,11 +143,11 @@ def train(batch_size=128, dataset="mnist", epochs=100, noise_size=100, location=
 
 
 def generate(batch_size, nice=False):
-    g = generator_model()
+    g = default_generator_model()
     g.compile(loss='binary_crossentropy', optimizer="SGD")
     g.load_weights('generator')
     if nice:
-        d = discriminator_model()
+        d = default_discriminator_model()
         d.compile(loss='binary_crossentropy', optimizer="SGD")
         d.load_weights('discriminator')
         noise = np.random.uniform(-1, 1, (batch_size*20, 100))
@@ -260,6 +188,7 @@ def get_args():
 if __name__ == "__main__":
     args = get_args()
     if args.mode == "train":
-        train(batch_size=args.batch_size, dataset=args.dataset, location=args.folder)
+        train(batch_size=args.batch_size, dataset=args.dataset, location=args.folder,
+              generator_model=default_generator_model, discriminator_model=default_discriminator_model)
     elif args.mode == "generate":
         generate(batch_size=args.batch_size, nice=args.nice)
