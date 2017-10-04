@@ -16,3 +16,4 @@ __pycache__/
 /readings
 /.idea
 /training_dataset-*
+/datasets
