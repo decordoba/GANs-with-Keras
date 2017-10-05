@@ -8,6 +8,7 @@ from gan_models import *
 from keras.models import Sequential
 from keras.optimizers import SGD
 from keras_utils import combine_images, plot_model, load_dataset
+from keras_plot import plot_images, AGG
 import numpy as np
 from PIL import Image
 from datetime import datetime
@@ -23,6 +24,8 @@ def train(dataset="mnist", batch_size=128, epochs=100, noise_size=100, location=
     default g_optimizer: SGD()
     default d_optimizer: SGD(lr=0.0005, momentum=0.9, nesterov=True)
     default gan_optimizer: SGD(lr=0.0005, momentum=0.9, nesterov=True)
+    default generator_model: default_generator_model
+    default discriminator_model: default_discriminator_model
     """
     # Set defaults
     if d_optimizer is None:
@@ -33,10 +36,12 @@ def train(dataset="mnist", batch_size=128, epochs=100, noise_size=100, location=
         gan_optimizer = SGD(lr=0.0005, momentum=0.9, nesterov=True)
     if location is None:
         now = datetime.now()
-        date = "{}_{:02d}:{:02d}:{:02d}".format(now.date(), now.hour, now.minute, now.second)
+        date = "{}_{:02d}.{:02d}.{:02d}".format(now.date(), now.hour, now.minute, now.second)
         location = "training_dataset-{}_batch-size-{}_{}".format(dataset, batch_size, date)
     if generator_model is None:
-        pass
+        generator_model = default_generator_model
+    if discriminator_model is None:
+        discriminator_model = default_discriminator_model
 
     # Create folder where we will save all images
     try:
@@ -49,12 +54,10 @@ def train(dataset="mnist", batch_size=128, epochs=100, noise_size=100, location=
     X_train = load_dataset(dataset, rng=(-1, 1))
     print("Shape of '{}' dataset: {}".format(dataset, X_train.shape))
 
-    # Plot real images from dataset
-    try:
-        from keras_plot import plot_images
-        plot_images(X_train)
-    except ImportError:
-        pass
+
+    # Plot real images from dataset (only if they can be shown (AGG == False))
+    if not AGG:
+        plot_images(X_train, invert_colors=True)
 
     # Create models G, D and GAN
     input_shape = X_train.shape[1:]
@@ -143,33 +146,34 @@ def train(dataset="mnist", batch_size=128, epochs=100, noise_size=100, location=
 
 
 def generate(batch_size, nice=False):
-    g = default_generator_model()
-    g.compile(loss='binary_crossentropy', optimizer="SGD")
-    g.load_weights('generator')
-    if nice:
-        d = default_discriminator_model()
-        d.compile(loss='binary_crossentropy', optimizer="SGD")
-        d.load_weights('discriminator')
-        noise = np.random.uniform(-1, 1, (batch_size*20, 100))
-        generated_images = g.predict(noise, verbose=1)
-        d_pret = d.predict(generated_images, verbose=1)
-        index = np.arange(0, batch_size*20)
-        index.resize((batch_size*20, 1))
-        pre_with_index = list(np.append(d_pret, index, axis=1))
-        pre_with_index.sort(key=lambda x: x[0], reverse=True)
-        nice_images = np.zeros((batch_size,) + generated_images.shape[1:3], dtype=np.float32)
-        nice_images = nice_images[:, :, :, None]
-        for i in range(batch_size):
-            idx = int(pre_with_index[i][1])
-            nice_images[i, :, :, 0] = generated_images[idx, :, :, 0]
-        image = combine_images(nice_images)
-    else:
-        noise = np.random.uniform(-1, 1, (batch_size, 100))
-        generated_images = g.predict(noise, verbose=1)
-        image = combine_images(generated_images)
-    image = image*127.5+127.5
-    Image.fromarray(image.astype(np.uint8)).save(
-        "generated_image.png")
+    pass
+    # g = default_generator_model()
+    # g.compile(loss='binary_crossentropy', optimizer="SGD")
+    # g.load_weights('generator')
+    # if nice:
+    #     d = default_discriminator_model()
+    #     d.compile(loss='binary_crossentropy', optimizer="SGD")
+    #     d.load_weights('discriminator')
+    #     noise = np.random.uniform(-1, 1, (batch_size*20, 100))
+    #     generated_images = g.predict(noise, verbose=1)
+    #     d_pret = d.predict(generated_images, verbose=1)
+    #     index = np.arange(0, batch_size*20)
+    #     index.resize((batch_size*20, 1))
+    #     pre_with_index = list(np.append(d_pret, index, axis=1))
+    #     pre_with_index.sort(key=lambda x: x[0], reverse=True)
+    #     nice_images = np.zeros((batch_size,) + generated_images.shape[1:3], dtype=np.float32)
+    #     nice_images = nice_images[:, :, :, None]
+    #     for i in range(batch_size):
+    #         idx = int(pre_with_index[i][1])
+    #         nice_images[i, :, :, 0] = generated_images[idx, :, :, 0]
+    #     image = combine_images(nice_images)
+    # else:
+    #     noise = np.random.uniform(-1, 1, (batch_size, 100))
+    #     generated_images = g.predict(noise, verbose=1)
+    #     image = combine_images(generated_images)
+    # image = image*127.5+127.5
+    # Image.fromarray(image.astype(np.uint8)).save(
+    #     "generated_image.png")
 
 
 def get_args():
@@ -189,6 +193,7 @@ if __name__ == "__main__":
     args = get_args()
     if args.mode == "train":
         train(batch_size=args.batch_size, dataset=args.dataset, location=args.folder,
-              generator_model=default_generator_model, discriminator_model=default_discriminator_model)
+              generator_model=default_generator_model,
+              discriminator_model=default_discriminator_model)
     elif args.mode == "generate":
         generate(batch_size=args.batch_size, nice=args.nice)
