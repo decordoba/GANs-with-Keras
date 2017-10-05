@@ -162,11 +162,12 @@ def get_params_from_shape(shp):
 
 def load_dataset(dataset, rng=(-1, 1)): 
     # Returns data from dataset with shape (n, h, w, d), normalized from rng[0] to rng[1]
-    if dataset == "lumps":
-        path = "./datasets/lumps/lumps.npy"
-        X_train = np.load(path)  # We use all data for training
-        min_val = X_train.min()
-        max_val = X_train.max()
+    min_val = None
+    max_val = None
+    if dataset == "lumps1" or dataset == "lumps":
+        X_train = np.load("./datasets/lumps1/lumps1.npy")  # We use all data for training
+    elif dataset == "lumps2":
+        X_train = np.load("./datasets/lumps2/lumps2.npy")  # We use all data for training
     elif dataset == "mnist":
         (X_train, y_train), (X_test, y_test) = mnist.load_data()
         min_val = 0.0
@@ -177,6 +178,9 @@ def load_dataset(dataset, rng=(-1, 1)):
         max_val = 255.0
     else:
         raise KeyError("Unknown dataset: {}".format(dataset))
+    if min_val is None or max_val is None:
+        min_val = X_train.min()
+        max_val = X_train.max()
     # Normalize data: All number will go from rng[0] to rng[1]
     X_train = ((X_train.astype(np.float32) - min_val) / (max_val - min_val) * (rng[1] - rng[0])) + rng[0]
     if len(X_train.shape) < 4:
@@ -309,3 +313,13 @@ def save_model_data(model=None, results=None, location=None, save_yaml=True, sav
             result += "{}: {}\n".format(k, results[k])
         with open(location + "/result.yaml", "w") as f:
             f.write(result)
+
+# Get time (and date) in a human-readable format (yyyy-mm-dd hh:mm:ss)
+def getCurrentTime(time=True, date=False):
+    now = datetime.now()
+    s = ""
+    if date:
+        s += "{} ".format(now.date())
+    if time:
+        s += "{:02d}:{:02d}:{:02d}".format(now.hour, now.minute, now.second)
+    return s.strip()

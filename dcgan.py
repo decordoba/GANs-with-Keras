@@ -7,7 +7,7 @@ Modified from https://github.com/jacobgil/keras-dcgan
 from gan_models import *
 from keras.models import Sequential
 from keras.optimizers import SGD
-from keras_utils import combine_images, plot_model, load_dataset
+from keras_utils import combine_images, plot_model, load_dataset, getCurrentTime
 from keras_plot import plot_images, AGG
 import numpy as np
 from PIL import Image
@@ -125,6 +125,8 @@ def train(dataset="mnist", batch_size=128, epochs=100, noise_size=100, location=
             # Save an image and print some feedback messages
             if (batch + 1) % 20 == 0:
                 # Print feedback messages for G and D
+                if (batch + 1) % 100 == 20:
+                    print(getCurrentTime())
                 print(d_str.format(epoch, batch + 1, d_loss))
                 print(g_str.format(epoch, batch + 1, g_loss))
                 # Save sample image
@@ -180,8 +182,8 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-m", "--mode", choices=["train", "generate"], type=str, required=True)
     parser.add_argument("-b", "--batch_size", type=int, default=128)
-    parser.add_argument("-d", "--dataset", choices=["mnist", "cifar10", "lumps"], default="lumps",
-                        type=str)
+    parser.add_argument("-d", "--dataset", choices=["mnist", "cifar10", "lumps1", "lumps2"],
+                        default="lumps1", type=str)
     parser.add_argument("-f", "--folder", default=None, type=str)
     parser.add_argument("-n", "--nice", dest="nice", action="store_true")
     parser.set_defaults(nice=False)
