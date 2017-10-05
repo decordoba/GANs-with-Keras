@@ -1,12 +1,12 @@
 import os
-from time import clock
 import numpy as np
 from keras.utils import np_utils
 from keras import backend
-from keras.callbacks import EarlyStopping
 from keras.layers.wrappers import Wrapper
 from keras.models import Sequential
+from keras.datasets import mnist, cifar10
 from keras_plot import plot_history
+import math
 import pydot
 
 
@@ -205,7 +205,9 @@ def combine_images(generated_images):
             i = int(index / cols)
             j = index % cols
             image[i*h:(i+1)*h, j*w:(j+1)*w, depth] = img[:, :]
-    return image  # Shape will always be (h, w, d)
+    if d == 1:
+        image = image[:, :, 0]
+    return image  # Shape will always be (h, w, d) or (h, w) if d == 1
 
 def format_dataset(x_train, y_train, x_test=None, y_test=None, data_reduction=None,
                    to_categorical=False, ret_labels=False, verbose=False):
