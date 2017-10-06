@@ -73,14 +73,15 @@ def plot_dg(g_loss, d_loss, fig_num=0, filename=None, xaxis="Epoch", fig_clear=T
 
 def plot_losses(folder=None, filename=None, save_img=False, image_summary=False):
     if folder is not None:
-        os.chdir(folder)
+        folder = "."
+    folder += "/"
     if filename is None:
         filename = "result.yaml"
     d_losses = []
     g_losses = []
     d_loss = []
     g_loss = []
-    with open(filename) as f:
+    with open(folder + filename) as f:
         try:
             print("Loading data from {}. This may take a while...".format(filename))
             result = yaml.load(f)
@@ -96,10 +97,8 @@ def plot_losses(folder=None, filename=None, save_img=False, image_summary=False)
                     print(n)
             print("Data from {} loaded".format(filename))
         except yaml.YAMLError as YamlError:
-            print("There was an error parsing 'result.yaml'. Plotting aborted.")
+            print("There was an error parsing '{}'. Plotting aborted.".format(filename))
             print(YamlError)
-            if folder is not None:
-                os.chdir("./..")
             return
     if not AGG:
         plot_dg(g_loss=g_losses, d_loss=d_losses, xaxis="Batch")
@@ -110,40 +109,41 @@ def plot_losses(folder=None, filename=None, save_img=False, image_summary=False)
         input("Press ENTER to continue")
     if save_img:
         output_filename = "GAN_loss.png"
-        plot_dg(g_loss=g_losses, d_loss=d_losses, xaxis="Batch", filename=output_filename)
+        plot_dg(g_loss=g_losses, d_loss=d_losses, xaxis="Batch", filename=folder + output_filename)
         print("Results saved in {}".format(output_filename))
 
     if image_summary:
         # Create folder where we will save all images
         folder_name = "image_summary"
         try:
-            os.makedirs(folder_name)
+            os.makedirs(folder + folder_name)
         except OSError as e:
             pass  # the folder already exists
-        all_imgs = sorted([f for f in os.listdir() if f.endswith(".png") and f[0].isdigit()])
+        all_imgs = sorted([f for f in os.listdir(folder) if f.endswith(".png") and f[0].isdigit()])
         # Assume last image has the right suffix, like '_460.png'
         suffix = "_" + all_imgs[-1].split("_")[-1]
-        summary_images = [f for f in os.listdir() if f.endswith(suffix)]
+        summary_images = [f for f in all_imgs if f.endswith(suffix)]
         for img_path in summary_images:
-            shutil.copyfile(img_path, folder_name + "/" + img_path)
+            shutil.copyfile(folder + img_path, folder + folder_name + "/" + img_path)
         real_images_saved = 0
         try:
-            with open("config.yaml", "r") as f:
-                train_config = yaml.load(f)
-                dataset = train_config["dataset"]
-                batch_size = train_config["batch_size"]
-                real_images = load_dataset(dataset, rng=(-1, 1))
-                # Save 5 real images
-                for i in range(5):  # Assume we will always have more than 5 batches
-                    image_batch = real_images[i * batch_size:(i + 1) * batch_size]
-                    save_images_combined(image_batch, "real_image_{}.png".format(i))
-                    real_images_saved += 1
+            with open(folder + "config.yaml", "r") as f:
+                try:
+                    train_config = yaml.load(f)
+                    dataset = train_config["dataset"]
+                    batch_size = train_config["batch_size"]
+                    real_images = load_dataset(dataset, rng=(-1, 1))
+                    # Save 5 real images
+                    for i in range(5):  # Assume we will always have more than 5 batches
+                        image_batch = real_images[i * batch_size:(i + 1) * batch_size]
+                        save_images_combined(image_batch, folder + "real_image_{}.png".format(i))
+                        real_images_saved += 1
+                except yaml.YAMLError as YamlError:
+                    print("There was a problem parsing 'config.yaml'. Plotting aborted.")
+                    print(YamlError)
         except FileNotFoundError:
             pass
         print("{} images saved in {}".format(len(summary_images) + real_images_saved, folder_name))
-
-    if folder is not None:
-        os.chdir("./..")
 
 
 def get_args():
