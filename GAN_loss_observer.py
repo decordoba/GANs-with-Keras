@@ -3,6 +3,7 @@ from matplotlib import pyplot as plt
 import argparse
 import yaml
 import os
+import shutil
 import numpy as np
 
 
@@ -60,7 +61,7 @@ def plot_dg(g_loss, d_loss, fig_num=0, filename=None, xaxis="Epoch", fig_clear=T
         fig.clear()
 
 
-def plot_losses(folder, filename, save_img=False):
+def plot_losses(folder=None, filename=None, save_img=False, image_summary=False):
     if folder is not None:
         os.chdir(folder)
     if filename is None:
@@ -99,19 +100,37 @@ def plot_losses(folder, filename, save_img=False):
     if save_img:
         plot_dg(g_loss=g_losses, d_loss=d_losses, xaxis="Batch", filename="GAN_loss.png")
 
+    if image_summary:
+        # Create folder where we will save all images
+        folder_name = "image_summary"
+        try:
+            os.makedirs(folder_name)
+        except OSError as e:
+            pass  # the folder already exists
+        all_imgs = sorted([f for f in os.listdir() if f.endswith(".png")])
+        # Assume last image has the right suffix, like '_460.png'
+        suffix = "_" + all_imgs[-1].split("_")[-1]
+        for img_path in [f for f in os.listdir() if f.endswith(suffix)]:
+            shutil.copyfile(img_path, folder_name + "/" + img_path)
+
     if folder is not None:
         os.chdir("./..")
 
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-f", "--folder", default=None, type=str)
-    parser.add_argument("-r", "--result", default=None, type=str)
-    parser.add_argument("-s", "--save", default=False, type=bool)
+    parser.add_argument("-f", "--folder", default=None, type=str,
+                        help="Location of 'result.yaml'. If unset, assumes current folder.")
+    parser.add_argument("-r", "--result", default="result.yaml", type=str,
+                        help="Filename with results. Default is 'result.yaml'.")
+    parser.add_argument("-s", "--save", default=False, type=bool,
+                        help="Whether to save results image to file or not. Default is False.")
+    parser.add_argument("-is", "--image_summary", default=False, type=bool,
+                        help="Whether to create folder with summary of images (every epoch).")
     args = parser.parse_args()
     return args
 
 
 if __name__ == "__main__":
     args = get_args()
-    plot_losses(args.folder, args.result, args.save)
+    plot_losses(args.folder, args.result, args.save, args.image_summary)
