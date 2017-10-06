@@ -19,7 +19,7 @@ import math
 
 def plot_images(images, fig_num=0, labels=None, label_description="Label", labels2=None,
                 label2_description="Label", show_errors_only=False, cmap="Greys", no_axis=True,
-                invert_colors=False):
+                invert_colors=False, title=None):
     """
     Show all images in images list, one at a time, waiting for an ENTER to show the next one
     If q + ENTER is pressed, the function is terminated
@@ -49,9 +49,12 @@ def plot_images(images, fig_num=0, labels=None, label_description="Label", label
                 title = "{} = {} , {} = {}".format(label_description, labels[i],
                                                    label2_description, labels2[i])
             plt.title(title, fontsize="xx-large")
-            if no_axis:
-                plt.yticks([])
-                plt.xticks([])
+        elif title is not None:
+            # Title is only used if labels is None
+            plt.title(title, fontsize="xx-large")
+        if no_axis:
+            plt.yticks([])
+            plt.xticks([])
         plt.pause(0.001)
         s = input("Press ENTER to see the next image, or Q (q) to continue:  ")
         if len(s) > 0 and s[0].lower() == "q":
