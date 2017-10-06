@@ -7,6 +7,7 @@ from keras.models import Sequential
 from keras.datasets import mnist, cifar10
 from keras_plot import plot_history
 from datetime import datetime
+from PIL import Image
 import math
 import pydot
 
@@ -214,6 +215,15 @@ def combine_images(generated_images):
         image = image[:, :, 0]
     return image  # Shape will always be (h, w, d) or (h, w) if d == 1
 
+def save_images_combined(images, filename):
+    """
+    Save images as a single chessboard image with filename
+    """
+    # Assume range (-1, +1)
+    image = combine_images(images)
+    image = image * 127.5 + 127.5
+    Image.fromarray(image.astype(np.uint8)).save(filename)
+
 def format_dataset(x_train, y_train, x_test=None, y_test=None, data_reduction=None,
                    to_categorical=False, ret_labels=False, verbose=False):
     """
@@ -316,7 +326,7 @@ def save_model_data(model=None, results=None, location=None, save_yaml=True, sav
             f.write(result)
 
 # Get time (and date) in a human-readable format (yyyy-mm-dd hh:mm:ss)
-def getCurrentTime(time=True, date=False):
+def get_current_time(time=True, date=False):
     now = datetime.now()
     s = ""
     if date:

@@ -7,10 +7,10 @@ Modified from https://github.com/jacobgil/keras-dcgan
 from gan_models import *
 from keras.models import Sequential
 from keras.optimizers import SGD
-from keras_utils import combine_images, plot_model, load_dataset, getCurrentTime
+from keras_utils import save_images_combined, plot_model, load_dataset, get_current_time
 from keras_plot import plot_images, AGG
 import numpy as np
-from PIL import Image
+import yaml
 from datetime import datetime
 import argparse
 import os
@@ -54,7 +54,6 @@ def train(dataset="mnist", batch_size=128, epochs=100, noise_size=100, location=
     X_train = load_dataset(dataset, rng=(-1, 1))
     print("Shape of '{}' dataset: {}".format(dataset, X_train.shape))
 
-
     # Plot real images from dataset (only if they can be shown (AGG == False))
     if not AGG:
         plot_images(X_train, invert_colors=True)
@@ -97,6 +96,13 @@ def train(dataset="mnist", batch_size=128, epochs=100, noise_size=100, location=
                                                                     epochs, len_batch, batches)
     e_str = "{{:0{}d}}".format(len_epoch)
 
+    # Create file that saves information about model (read by generator)
+    config_dict = {"input_shape": input_shape, "dataset": dataset, "batch_size": batch_size,
+                   "epochs": epochs, "noise_size": noise_size,
+                   "generator_weights": [], "discriminator_weights": [],
+                   "generator_model": generator_model.__name__,
+                   "discriminator_model": discriminator_model.__name__}
+
     # Discriminate and Generate iteratively for all epochs and batches
     for epoch in range(1, epochs + 1):
         d_losses = []
@@ -126,18 +132,28 @@ def train(dataset="mnist", batch_size=128, epochs=100, noise_size=100, location=
             if (batch + 1) % 20 == 0:
                 # Print feedback messages for G and D
                 if (batch + 1) % 100 == 20:
-                    print(getCurrentTime())
+                    print(get_current_time())
                 print(d_str.format(epoch, batch + 1, d_loss))
                 print(g_str.format(epoch, batch + 1, g_loss))
                 # Save sample image
-                image = combine_images(X_fake)
-                image = image * 127.5 + 127.5
-                filename = "{}/{:03d}_{:03d}.png".format(location, epoch, batch + 1)
-                Image.fromarray(image.astype(np.uint8)).save(filename)
+                save_images_combined(X_fake, "{}/{:03d}_{:03d}.png".format(location, epoch,
+                                                                           batch + 1))
 
         # Save weights at the end of every epoch
-        g.save_weights(location + '/generator{}.h5'.format(((epoch - 1) // 10) * 10), True)
-        d.save_weights(location + '/discriminator{}.h5'.format(((epoch - 1) // 10) * 10), True)
+        generator_filename = "generator{}.h5".format(((epoch - 1) // 10) * 10)
+        discriminator_filename = "discriminator{}.h5".format(((epoch - 1) // 10) * 10)
+        g.save_weights(location + "/" + generator_filename, True)
+        d.save_weights(location + "/" + discriminator_filename, True)
+        # Append weights locations to config if they have changed
+        if (not len(config_dict["generator_weights"]) or
+                    generator_filename != config_dict["generator_weights"][-1]):
+            config_dict["generator_weights"].append(generator_filename)
+        if (not len(config_dict["discriminator_weights"]) or
+                    discriminator_filename != config_dict["discriminator_weights"][-1]):
+            config_dict["discriminator_weights"].append(discriminator_filename)
+        # Save config (overwrite every epoch)
+        with open(location + "/config.yaml", "w") as f:
+            yaml.dump(config_dict, f, default_flow_style=False)
         # Save D and G losses
         with open(location + "/result.yaml", "a") as f:
             f.write("epoch" + e_str.format(epoch) + ":\n")
@@ -147,35 +163,54 @@ def train(dataset="mnist", batch_size=128, epochs=100, noise_size=100, location=
             f.write("  d_losses: {}\n".format(d_losses))
 
 
-def generate(batch_size, nice=False):
-    pass
-    # g = default_generator_model()
-    # g.compile(loss='binary_crossentropy', optimizer="SGD")
-    # g.load_weights('generator')
-    # if nice:
-    #     d = default_discriminator_model()
-    #     d.compile(loss='binary_crossentropy', optimizer="SGD")
-    #     d.load_weights('discriminator')
-    #     noise = np.random.uniform(-1, 1, (batch_size*20, 100))
-    #     generated_images = g.predict(noise, verbose=1)
-    #     d_pret = d.predict(generated_images, verbose=1)
-    #     index = np.arange(0, batch_size*20)
-    #     index.resize((batch_size*20, 1))
-    #     pre_with_index = list(np.append(d_pret, index, axis=1))
-    #     pre_with_index.sort(key=lambda x: x[0], reverse=True)
-    #     nice_images = np.zeros((batch_size,) + generated_images.shape[1:3], dtype=np.float32)
-    #     nice_images = nice_images[:, :, :, None]
-    #     for i in range(batch_size):
-    #         idx = int(pre_with_index[i][1])
-    #         nice_images[i, :, :, 0] = generated_images[idx, :, :, 0]
-    #     image = combine_images(nice_images)
-    # else:
-    #     noise = np.random.uniform(-1, 1, (batch_size, 100))
-    #     generated_images = g.predict(noise, verbose=1)
-    #     image = combine_images(generated_images)
-    # image = image*127.5+127.5
-    # Image.fromarray(image.astype(np.uint8)).save(
-    #     "generated_image.png")
+def generate(batch_size=128, location=None, filename=None, nice=False):
+    # Set defaults
+    if location is None:
+        location = "."
+    if filename is None:
+        now = datetime.now()
+        filename = "{}_{:02d}.{:02d}.{:02d}.png".format(now.date(), now.hour, now.minute,
+                                                        now.second)
+
+    # Should get everything else (generator_model, generator_weights_file, noise_size, input_shape,
+    #                             discriminator_model, discriminator_weights_file) from config
+    with open(location + "/config.yaml", "r") as f:
+        train_config = yaml.load()
+    noise_size = train_config["noise_size"]
+    input_shape = train_config["input_shape"]
+    generator_weights_file = train_config["generator_weights"][-1]
+    discriminator_weights_file = train_config["discriminator_weights"][-1]
+    generator_model = globals()[train_config["generator_model"]]
+    discriminator_model = globals()[train_config["discriminator_model"]]
+
+    # Load and compile generator model
+    g = generator_model(noise_size, input_shape)
+    g.load_weights(generator_weights_file)
+
+    # Save images. Two modes: nice (generate many images and show only best) or default
+    if nice:
+        # Generate 20 times more samples than we want to show
+        k = 20
+        noise = np.random.uniform(-1, 1, size=(batch_size * k, noise_size))
+        generated_images = g.predict(noise, verbose=1)
+
+        # Create discriminator and only show the images that are more believable to D
+        d = discriminator_model(input_shape)
+        d.load_weights(discriminator_weights_file)
+        d_predictions = d.predict(generated_images, verbose=1)
+        # Indices of batch_size top predictions
+        best_predictions = d_predictions.argsort()[-batch_size:][::-1]
+
+        # Get best images array and save to file
+        h, w, d = get_params_from_shape
+        best_images = np.zeros((batch_size, h, w, d), dtype=np.float32)
+        for i, pred_idx in enumerate(best_predictions):
+            best_images[i, :, :, 0] = generated_images[pred_idx, :, :, 0]
+        save_images_combined(best_images, filename)
+    else:
+        noise = np.random.uniform(-1, 1, size=(batch_size, noise_size))
+        generated_images = g.predict(noise, verbose=1)
+        save_images_combined(generated_images, filename)
 
 
 def get_args():
