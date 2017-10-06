@@ -175,7 +175,7 @@ def generate(batch_size=128, location=None, filename=None, nice=False):
     # Should get everything else (generator_model, generator_weights_file, noise_size, input_shape,
     #                             discriminator_model, discriminator_weights_file) from config
     with open(location + "/config.yaml", "r") as f:
-        train_config = yaml.load()
+        train_config = yaml.load(f)
     noise_size = train_config["noise_size"]
     input_shape = train_config["input_shape"]
     generator_weights_file = train_config["generator_weights"][-1]

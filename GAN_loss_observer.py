@@ -10,6 +10,7 @@ if r1 != 0 and r2 != 0:
     mpl.use('Agg')
     AGG = True
 from matplotlib import pyplot as plt
+from keras_utils import save_images_combined, load_dataset
 import argparse
 import yaml
 import shutil
@@ -108,7 +109,9 @@ def plot_losses(folder=None, filename=None, save_img=False, image_summary=False)
         plot_dg(g_loss=g_loss, d_loss=d_loss, xaxis="Batch", fig_clear=False, xaxis_multiplier=468)
         input("Press ENTER to continue")
     if save_img:
-        plot_dg(g_loss=g_losses, d_loss=d_losses, xaxis="Batch", filename="GAN_loss.png")
+        output_filename = "GAN_loss.png"
+        plot_dg(g_loss=g_losses, d_loss=d_losses, xaxis="Batch", filename=output_filename)
+        print("Results saved in {}".format(output_filename))
 
     if image_summary:
         # Create folder where we will save all images
@@ -120,8 +123,23 @@ def plot_losses(folder=None, filename=None, save_img=False, image_summary=False)
         all_imgs = sorted([f for f in os.listdir() if f.endswith(".png")])
         # Assume last image has the right suffix, like '_460.png'
         suffix = "_" + all_imgs[-1].split("_")[-1]
-        for img_path in [f for f in os.listdir() if f.endswith(suffix)]:
+        summary_images = [f for f in os.listdir() if f.endswith(suffix)]
+        for img_path in summary_images:
             shutil.copyfile(img_path, folder_name + "/" + img_path)
+        real_images_saved = 0
+        try:
+            with open("config.yaml", "r") as f:
+                train_config = yaml.load(f)
+                dataset = train_config["dataset"]
+                batch_size = train_config["batch_size"]
+                real_images = load_dataset(dataset, rng=(-1, 1))
+                # Save 5 real images
+                for i in range(5):  # Assume we will always have more than 5 batches
+                    image_batch = real_images[i * batch_size:(i + 1) * batch_size]
+                    save_images_combined(image_batch, "real_image_{}.png".format(i))
+        except FileNotFoundError:
+            pass
+        print("{} images saved in {}".format(len(summary_images) + real_images_saved, folder_name))
 
     if folder is not None:
         os.chdir("./..")
