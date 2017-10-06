@@ -120,7 +120,7 @@ def plot_losses(folder=None, filename=None, save_img=False, image_summary=False)
             os.makedirs(folder_name)
         except OSError as e:
             pass  # the folder already exists
-        all_imgs = sorted([f for f in os.listdir() if f.endswith(".png")])
+        all_imgs = sorted([f for f in os.listdir() if f.endswith(".png") and f[0].isdigit()])
         # Assume last image has the right suffix, like '_460.png'
         suffix = "_" + all_imgs[-1].split("_")[-1]
         summary_images = [f for f in os.listdir() if f.endswith(suffix)]
@@ -137,6 +137,7 @@ def plot_losses(folder=None, filename=None, save_img=False, image_summary=False)
                 for i in range(5):  # Assume we will always have more than 5 batches
                     image_batch = real_images[i * batch_size:(i + 1) * batch_size]
                     save_images_combined(image_batch, "real_image_{}.png".format(i))
+                    real_images_saved += 1
         except FileNotFoundError:
             pass
         print("{} images saved in {}".format(len(summary_images) + real_images_saved, folder_name))
