@@ -6,6 +6,7 @@ from keras.layers.wrappers import Wrapper
 from keras.models import Sequential
 from keras.datasets import mnist, cifar10
 from keras_plot import plot_history
+from datetime import datetime
 import math
 import pydot
 

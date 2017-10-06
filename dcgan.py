@@ -20,7 +20,7 @@ def train(dataset="mnist", batch_size=128, epochs=100, noise_size=100, location=
           generator_model=None, discriminator_model=None, g_optimizer=None,
           d_optimizer=None, gan_optimizer=None):
     """
-    default location: "training_dataset-{}_batch-size-{}_{}".format(dataset, batch_size, date)
+    default location: "output/dataset/data_time"
     default g_optimizer: SGD()
     default d_optimizer: SGD(lr=0.0005, momentum=0.9, nesterov=True)
     default gan_optimizer: SGD(lr=0.0005, momentum=0.9, nesterov=True)
@@ -37,7 +37,7 @@ def train(dataset="mnist", batch_size=128, epochs=100, noise_size=100, location=
     if location is None:
         now = datetime.now()
         date = "{}_{:02d}.{:02d}.{:02d}".format(now.date(), now.hour, now.minute, now.second)
-        location = "training_dataset-{}_batch-size-{}_{}".format(dataset, batch_size, date)
+        location = "output/{}/{}".format(dataset, date)
     if generator_model is None:
         generator_model = default_generator_model
     if discriminator_model is None:
@@ -136,8 +136,8 @@ def train(dataset="mnist", batch_size=128, epochs=100, noise_size=100, location=
                 Image.fromarray(image.astype(np.uint8)).save(filename)
 
         # Save weights at the end of every epoch
-        g.save_weights(location + '/generator.h5', True)
-        d.save_weights(location + '/discriminator.h5', True)
+        g.save_weights(location + '/generator{}.h5'.format(((epoch - 1) // 10) * 10), True)
+        d.save_weights(location + '/discriminator{}.h5'.format(((epoch - 1) // 10) * 10), True)
         # Save D and G losses
         with open(location + "/result.yaml", "a") as f:
             f.write("epoch" + e_str.format(epoch) + ":\n")
@@ -180,7 +180,7 @@ def generate(batch_size, nice=False):
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-m", "--mode", choices=["train", "generate"], type=str, required=True)
+    parser.add_argument("-m", "--mode", choices=["train", "generate"], type=str, default="train")
     parser.add_argument("-b", "--batch_size", type=int, default=128)
     parser.add_argument("-d", "--dataset", choices=["mnist", "cifar10", "lumps1", "lumps2"],
                         default="lumps1", type=str)
