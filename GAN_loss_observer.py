@@ -1,8 +1,17 @@
 #!/usr/bin/env python3.5
+import matplotlib as mpl
+import os
+AGG = False
+r1 = os.system('python3 -c "import matplotlib.pyplot as plt;plt.figure()"')  # Linux
+r2 = os.system('py -c "import matplotlib.pyplot as plt;plt.figure()"')  # Windows
+# This line allows mpl to run with no DISPLAY defined
+if r1 != 0 and r2 != 0:
+    print("$DISPLAY not detected, matplotlib set to use 'Agg' backend")
+    mpl.use('Agg')
+    AGG = True
 from matplotlib import pyplot as plt
 import argparse
 import yaml
-import os
 import shutil
 import numpy as np
 
@@ -91,12 +100,13 @@ def plot_losses(folder=None, filename=None, save_img=False, image_summary=False)
             if folder is not None:
                 os.chdir("./..")
             return
-    plot_dg(g_loss=g_losses, d_loss=d_losses, xaxis="Batch")
-    input("Press ENTER to continue")
-    plot_dg(g_loss=g_losses, d_loss=d_losses, xaxis="Batch", plot_mean=50)
-    input("Press ENTER to continue")
-    plot_dg(g_loss=g_loss, d_loss=d_loss, xaxis="Batch", fig_clear=False, xaxis_multiplier=468)
-    input("Press ENTER to continue")
+    if not AGG:
+        plot_dg(g_loss=g_losses, d_loss=d_losses, xaxis="Batch")
+        input("Press ENTER to continue")
+        plot_dg(g_loss=g_losses, d_loss=d_losses, xaxis="Batch", plot_mean=50)
+        input("Press ENTER to continue")
+        plot_dg(g_loss=g_loss, d_loss=d_loss, xaxis="Batch", fig_clear=False, xaxis_multiplier=468)
+        input("Press ENTER to continue")
     if save_img:
         plot_dg(g_loss=g_losses, d_loss=d_losses, xaxis="Batch", filename="GAN_loss.png")
 
