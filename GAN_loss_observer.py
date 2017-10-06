@@ -72,7 +72,7 @@ def plot_dg(g_loss, d_loss, fig_num=0, filename=None, xaxis="Epoch", fig_clear=T
 
 
 def plot_losses(folder=None, filename=None, save_img=False, image_summary=False):
-    if folder is not None:
+    if folder is None:
         folder = "."
     folder += "/"
     if filename is None:
@@ -132,11 +132,13 @@ def plot_losses(folder=None, filename=None, save_img=False, image_summary=False)
                     train_config = yaml.load(f)
                     dataset = train_config["dataset"]
                     batch_size = train_config["batch_size"]
+                    print("Loading dataset {}. This may take a while...".format(dataset))
                     real_images = load_dataset(dataset, rng=(-1, 1))
                     # Save 5 real images
                     for i in range(5):  # Assume we will always have more than 5 batches
                         image_batch = real_images[i * batch_size:(i + 1) * batch_size]
-                        save_images_combined(image_batch, folder + "real_image_{}.png".format(i))
+                        save_images_combined(image_batch, folder + folder_name + "/" +
+                                             "real_image_{}.png".format(i))
                         real_images_saved += 1
                 except yaml.YAMLError as YamlError:
                     print("There was a problem parsing 'config.yaml'. Plotting aborted.")

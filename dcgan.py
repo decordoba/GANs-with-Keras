@@ -56,7 +56,7 @@ def train(dataset="mnist", batch_size=128, epochs=100, noise_size=100, location=
 
     # Plot real images from dataset (only if they can be shown (AGG == False))
     if not AGG:
-        plot_images(X_train, invert_colors=True)
+        plot_images(X_train, invert_colors=True, title="Original data")
 
     # Create models G, D and GAN
     input_shape = X_train.shape[1:]
@@ -185,43 +185,57 @@ def generate(batch_size=128, location=None, filename=None, nice=False):
 
     # Load and compile generator model
     g = generator_model(noise_size, input_shape)
-    g.load_weights(generator_weights_file)
+    print("Loading generator weights...")
+    g.load_weights(location + "/" + generator_weights_file)
 
     # Save images. Two modes: nice (generate many images and show only best) or default
     if nice:
         # Generate 20 times more samples than we want to show
         k = 20
         noise = np.random.uniform(-1, 1, size=(batch_size * k, noise_size))
+        print("Generating images...")
         generated_images = g.predict(noise, verbose=1)
 
         # Create discriminator and only show the images that are more believable to D
         d = discriminator_model(input_shape)
-        d.load_weights(discriminator_weights_file)
+        print("Loading discriminator weights...")
+        d.load_weights(location + "/" + discriminator_weights_file)
+        print("Labeling generated images...")
         d_predictions = d.predict(generated_images, verbose=1)
         # Indices of batch_size top predictions
         best_predictions = d_predictions.argsort()[-batch_size:][::-1]
 
+        # Plot generated images (only if they can be shown (AGG == False))
+        if not AGG:
+            plot_images(generated_images, invert_colors=True, labels=d_predictions,
+                        label_description="Prediction")
+
         # Get best images array and save to file
-        h, w, d = get_params_from_shape
+        h, w, d = get_params_from_shape(input_shape)
         best_images = np.zeros((batch_size, h, w, d), dtype=np.float32)
         for i, pred_idx in enumerate(best_predictions):
             best_images[i, :, :, 0] = generated_images[pred_idx, :, :, 0]
         save_images_combined(best_images, filename)
     else:
         noise = np.random.uniform(-1, 1, size=(batch_size, noise_size))
+        print("Generating images...")
         generated_images = g.predict(noise, verbose=1)
+
+        # Plot generated images (only if they can be shown (AGG == False))
+        if not AGG:
+            plot_images(generated_images, invert_colors=True)
+
         save_images_combined(generated_images, filename)
 
 
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-m", "--mode", choices=["train", "generate"], type=str, default="train")
-    parser.add_argument("-b", "--batch_size", type=int, default=128)
+    parser.add_argument("-bs", "--batch_size", type=int, default=128)
     parser.add_argument("-d", "--dataset", choices=["mnist", "cifar10", "lumps1", "lumps2"],
                         default="lumps1", type=str)
     parser.add_argument("-f", "--folder", default=None, type=str)
-    parser.add_argument("-n", "--nice", dest="nice", action="store_true")
-    parser.set_defaults(nice=False)
+    parser.add_argument("-n", "--nice", dest="nice", action="store_true", default=False)
     args = parser.parse_args()
     return args
 
@@ -233,4 +247,4 @@ if __name__ == "__main__":
               generator_model=default_generator_model,
               discriminator_model=default_discriminator_model)
     elif args.mode == "generate":
-        generate(batch_size=args.batch_size, nice=args.nice)
+        generate(batch_size=args.batch_size, location=args.folder, filename=None, nice=args.nice)
