@@ -325,8 +325,8 @@ def save_model_data(model=None, results=None, location=None, save_yaml=True, sav
         with open(location + "/result.yaml", "w") as f:
             f.write(result)
 
-# Get time (and date) in a human-readable format (yyyy-mm-dd hh:mm:ss)
 def get_current_time(time=True, date=False):
+    # Get time (and date) in a human-readable format (yyyy-mm-dd hh:mm:ss)
     now = datetime.now()
     s = ""
     if date:
@@ -334,3 +334,25 @@ def get_current_time(time=True, date=False):
     if time:
         s += "{:02d}:{:02d}:{:02d}".format(now.hour, now.minute, now.second)
     return s.strip()
+
+def get_int_input(text, default=None, min_val=None, max_val=None):
+    # Get number entered by user. Continue asking until number is valid and between min_val and
+    # max_val. Also, if ENTER is selected, the default number is returned.
+    while True:
+        try:
+            n = input(text + " [{}]:  ".format(default))
+            if len(n) == 0:
+                return default
+            n = int(n)
+            if (min_val is None or n >= min_val) and (max_val is None or n < max_val):
+                return n
+        except ValueError:
+            pass
+
+
+def get_str_input(text, default=None):
+    # Get string entered by user. If ENTER is selected, the default string is returned.
+    s = input(text + " [{}]:  ".format(default))
+    if len(s) == 0:
+        return default
+    return s

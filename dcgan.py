@@ -7,13 +7,32 @@ Modified from https://github.com/jacobgil/keras-dcgan
 from gan_models import *
 from keras.models import Sequential
 from keras.optimizers import SGD
-from keras_utils import save_images_combined, plot_model, load_dataset, get_current_time
+from keras_utils import save_images_combined, plot_model, load_dataset
+from keras_utils import get_current_time, get_int_input, get_str_input
 from keras_plot import plot_images, AGG
 import numpy as np
 import yaml
 from datetime import datetime
 import argparse
 import os
+
+
+def get_config_manually(nice=True):
+    print("Enter the training configuration manually, or press ENTER to use the default values:")
+    dct = dict()
+    dct["noise_size"] = get_int_input("Noise size", 100, 1)
+    h = get_int_input("Input shape - height", 64, 1)
+    w = get_int_input("Input shape - width", 64, 1)
+    d = get_int_input("Input shape - depth", 1, 1, 5)
+    dct["input_shape"] = (h, w, d)
+    dct["generator_weights"] = [get_str_input("Weights file for Generator", "generator.h5")]
+    dct["generator_model"] = get_str_input("Name Generator model", "default_generator_model")
+    if nice:
+        dct["discriminator_weights"] = [get_str_input("Weights file for Discriminator",
+                                                      "discriminator.h5")]
+        dct["discriminator_model"] = get_str_input("Name Discriminator model",
+                                                   "default_discriminator_model")
+    return dct
 
 
 def train(dataset="mnist", batch_size=128, epochs=100, noise_size=100, location=None,
@@ -163,7 +182,7 @@ def train(dataset="mnist", batch_size=128, epochs=100, noise_size=100, location=
             f.write("  d_losses: {}\n".format(d_losses))
 
 
-def generate(batch_size=128, location=None, filename=None, nice=False):
+def generate(batch_size=128, location=None, filename=None, nice=False, manual_config=False):
     # Set defaults
     if location is None:
         location = "."
@@ -174,14 +193,21 @@ def generate(batch_size=128, location=None, filename=None, nice=False):
 
     # Should get everything else (generator_model, generator_weights_file, noise_size, input_shape,
     #                             discriminator_model, discriminator_weights_file) from config
-    with open(location + "/config.yaml", "r") as f:
-        train_config = yaml.load(f)
+    if not manual_config:
+        with open(location + "/config.yaml", "r") as f:
+            train_config = yaml.load(f)
+    else:
+        train_config = get_config_manually(nice)
     noise_size = train_config["noise_size"]
     input_shape = train_config["input_shape"]
     generator_weights_file = train_config["generator_weights"][-1]
-    discriminator_weights_file = train_config["discriminator_weights"][-1]
     generator_model = globals()[train_config["generator_model"]]
-    discriminator_model = globals()[train_config["discriminator_model"]]
+    if nice:
+        discriminator_weights_file = train_config["discriminator_weights"][-1]
+        discriminator_model = globals()[train_config["discriminator_model"]]
+    else:  # The only use fo this is to mute annoying warnings from IDE
+        discriminator_weights_file = None
+        discriminator_model = None
 
     # Load and compile generator model
     g = generator_model(noise_size, input_shape)
@@ -216,6 +242,7 @@ def generate(batch_size=128, location=None, filename=None, nice=False):
         for i, pred_idx in enumerate(best_predictions):
             best_images[i, :, :, 0] = generated_images[pred_idx, :, :, 0]
         save_images_combined(best_images, filename)
+        print("Best generated images saved to {}".format(filename))
     else:
         noise = np.random.uniform(-1, 1, size=(batch_size, noise_size))
         print("Generating images...")
@@ -225,7 +252,9 @@ def generate(batch_size=128, location=None, filename=None, nice=False):
         if not AGG:
             plot_images(generated_images, invert_colors=True)
 
+        # Save to file
         save_images_combined(generated_images, filename)
+        print("Generated images saved to {}".format(filename))
 
 
 def get_args():
@@ -233,11 +262,18 @@ def get_args():
     parser.add_argument("-m", "--mode", choices=["train", "generate"], type=str, default="train")
     parser.add_argument("-bs", "--batch_size", type=int, default=128)
     parser.add_argument("-d", "--dataset", choices=["mnist", "cifar10", "lumps1", "lumps2"],
-                        default="lumps1", type=str)
-    parser.add_argument("-f", "--folder", default=None, type=str)
-    parser.add_argument("-n", "--nice", dest="nice", action="store_true", default=False)
-    args = parser.parse_args()
-    return args
+                        default="lumps1", type=str, help="Only used in 'train' mode. "
+                                                         "Dataset used for training.")
+    parser.add_argument("-f", "--folder", default=None, type=str,
+                        help="Folder where to save data if training / extract data from if "
+                             "generating.")
+    parser.add_argument("-n", "--nice", dest="nice", action="store_true", default=False,
+                        help="Only used in 'generate' mode. Generate more samples and show only "
+                             "the ones that scored higher according to the discriminator.")
+    parser.add_argument("-mc", "--manual_config", action="store_true", default=False,
+                        help="Only used in 'generate' mode. If no config file exists, the required"
+                             " values can be entered manually.")
+    return parser.parse_args()
 
 
 if __name__ == "__main__":
@@ -247,4 +283,5 @@ if __name__ == "__main__":
               generator_model=default_generator_model,
               discriminator_model=default_discriminator_model)
     elif args.mode == "generate":
-        generate(batch_size=args.batch_size, location=args.folder, filename=None, nice=args.nice)
+        generate(batch_size=args.batch_size, location=args.folder, filename=None, nice=args.nice,
+                 manual_config=args.manual_config)
