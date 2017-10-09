@@ -117,7 +117,7 @@ def plot_losses(folder=None, filename=None, save_img=False, image_summary=False)
         folder_name = "image_summary"
         try:
             os.makedirs(folder + folder_name)
-        except OSError as e:
+        except OSError:
             pass  # the folder already exists
         all_imgs = sorted([f for f in os.listdir(folder) if f.endswith(".png") and f[0].isdigit()])
         # Assume last image has the right suffix, like '_460.png'
@@ -154,12 +154,12 @@ def get_args():
                         help="Location of 'result.yaml'. If unset, assumes current folder.")
     parser.add_argument("-r", "--result", default="result.yaml", type=str,
                         help="Filename with results. Default is 'result.yaml'.")
-    parser.add_argument("-s", "--save", default=False, type=bool,
-                        help="Whether to save results image to file or not. Default is False.")
-    parser.add_argument("-is", "--image_summary", default=False, type=bool,
-                        help="Whether to create folder with summary of images (every epoch).")
-    args = parser.parse_args()
-    return args
+    parser.add_argument("-s", "--save", action="store_true", default=False, type=bool,
+                        help="Use this option to save image with loss graph to file.")
+    parser.add_argument("-is", "--image_summary", action="store_true", default=False, type=bool,
+                        help="Use this to create folder with summary of generated images "
+                             "every epoch.")
+    return parser.parse_args()
 
 
 if __name__ == "__main__":
