@@ -65,20 +65,20 @@ def train(dataset="mnist", batch_size=128, epochs=100, noise_size=100, location=
     # Create folder where we will save all images
     try:
         os.makedirs(location)
-    except OSError as e:
+    except OSError:
         print("Error: the directory '{}' already exists.".format(location))
         return
 
     # Load data from chosen dataset
-    X_train = load_dataset(dataset, rng=(-1, 1))
-    print("Shape of '{}' dataset: {}".format(dataset, X_train.shape))
+    x_train = load_dataset(dataset, rng=(-1, 1))
+    print("Shape of '{}' dataset: {}".format(dataset, x_train.shape))
 
     # Plot real images from dataset (only if they can be shown (AGG == False))
     if not AGG:
-        plot_images(X_train, invert_colors=True, title="Original data")
+        plot_images(x_train, invert_colors=True, title="Original data")
 
     # Create models G, D and GAN
-    input_shape = X_train.shape[1:]
+    input_shape = x_train.shape[1:]
     d = discriminator_model(input_shape)  # Maps image to label
     g = generator_model(noise_size, input_shape)  # Maps noise to image
     gan = Sequential()
@@ -106,13 +106,15 @@ def train(dataset="mnist", batch_size=128, epochs=100, noise_size=100, location=
         gan.summary()
 
     # Create some variables to print nicely and save with beautiful format
-    batches = int(X_train.shape[0]/batch_size)  # num batches every epoch
+    batches = int(x_train.shape[0] / batch_size)  # num batches every epoch
     len_batch = len(str(batches))  # max num digits of a batch (used for printing)
     len_epoch = len(str(epochs))  # max num digits of an epoch (used for printing)
     d_str = "Epoch: {{:0{}d}}/{}.   Batch: {{:0{}d}}/{}.   D loss: {{}}".format(len_epoch,
-                                                                    epochs, len_batch, batches)
+                                                                                epochs, len_batch,
+                                                                                batches)
     g_str = "Epoch: {{:0{}d}}/{}.   Batch: {{:0{}d}}/{}.   G loss: {{}}".format(len_epoch,
-                                                                    epochs, len_batch, batches)
+                                                                                epochs, len_batch,
+                                                                                batches)
     e_str = "{{:0{}d}}".format(len_epoch)
 
     # Create file that saves information about model (read by generator)
@@ -124,20 +126,22 @@ def train(dataset="mnist", batch_size=128, epochs=100, noise_size=100, location=
 
     # Discriminate and Generate iteratively for all epochs and batches
     for epoch in range(1, epochs + 1):
+        d_loss = None
+        g_loss = None
         d_losses = []
         g_losses = []
         for batch in range(batches):
             # Generate fake images with generator
             noise = np.random.uniform(-1, 1, size=(batch_size, noise_size))
-            X_fake = g.predict(noise, verbose=0)
+            x_fake = g.predict(noise, verbose=0)
             # Get batch real training data
-            X_real = X_train[batch*batch_size:(batch+1)*batch_size]
+            x_real = x_train[batch * batch_size:(batch + 1) * batch_size]
             # Create dataset with labels: first half is real (1), second half is fake (0)
-            X = np.concatenate((X_real, X_fake))
+            x = np.concatenate((x_real, x_fake))
             y = [1] * batch_size + [0] * batch_size
             # Calculate discriminator loss from dataset X and y
             d.trainable = True
-            d_loss = d.train_on_batch(X, y)
+            d_loss = d.train_on_batch(x, y)
             d_losses.append(d_loss)
 
             # Generate fake images with generator
@@ -155,7 +159,7 @@ def train(dataset="mnist", batch_size=128, epochs=100, noise_size=100, location=
                 print(d_str.format(epoch, batch + 1, d_loss))
                 print(g_str.format(epoch, batch + 1, g_loss))
                 # Save sample image
-                save_images_combined(X_fake, "{}/{:03d}_{:03d}.png".format(location, epoch,
+                save_images_combined(x_fake, "{}/{:03d}_{:03d}.png".format(location, epoch,
                                                                            batch + 1))
 
         # Save weights at the end of every epoch
@@ -165,10 +169,10 @@ def train(dataset="mnist", batch_size=128, epochs=100, noise_size=100, location=
         d.save_weights(location + "/" + discriminator_filename, True)
         # Append weights locations to config if they have changed
         if (not len(config_dict["generator_weights"]) or
-                    generator_filename != config_dict["generator_weights"][-1]):
+                generator_filename != config_dict["generator_weights"][-1]):
             config_dict["generator_weights"].append(generator_filename)
         if (not len(config_dict["discriminator_weights"]) or
-                    discriminator_filename != config_dict["discriminator_weights"][-1]):
+                discriminator_filename != config_dict["discriminator_weights"][-1]):
             config_dict["discriminator_weights"].append(discriminator_filename)
         # Save config (overwrite every epoch)
         with open(location + "/config.yaml", "w") as f:
