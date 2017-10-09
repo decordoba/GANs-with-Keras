@@ -74,7 +74,8 @@ def plot_dg(g_loss, d_loss, fig_num=0, filename=None, xaxis="Epoch", fig_clear=T
 def plot_losses(folder=None, filename=None, save_img=False, image_summary=False):
     if folder is None:
         folder = "."
-    folder += "/"
+    if folder[-1] != "/":
+        folder += "/"
     if filename is None:
         filename = "result.yaml"
     d_losses = []
@@ -111,6 +112,10 @@ def plot_losses(folder=None, filename=None, save_img=False, image_summary=False)
         output_filename = "GAN_loss.png"
         plot_dg(g_loss=g_losses, d_loss=d_losses, xaxis="Batch", filename=folder + output_filename)
         print("Results saved in {}".format(folder + output_filename))
+        output_filename = "GAN_loss_smooth.png"
+        plot_dg(g_loss=g_losses, d_loss=d_losses, xaxis="Batch", plot_mean=50,
+                filename=folder + output_filename)
+        print("Averaged results saved in {}".format(folder + output_filename))
 
     if image_summary:
         # Create folder where we will save all images
