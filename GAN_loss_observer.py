@@ -110,7 +110,7 @@ def plot_losses(folder=None, filename=None, save_img=False, image_summary=False)
     if save_img:
         output_filename = "GAN_loss.png"
         plot_dg(g_loss=g_losses, d_loss=d_losses, xaxis="Batch", filename=folder + output_filename)
-        print("Results saved in {}".format(output_filename))
+        print("Results saved in {}".format(folder + output_filename))
 
     if image_summary:
         # Create folder where we will save all images
@@ -145,7 +145,8 @@ def plot_losses(folder=None, filename=None, save_img=False, image_summary=False)
                     print(YamlError)
         except FileNotFoundError:
             pass
-        print("{} images saved in {}".format(len(summary_images) + real_images_saved, folder_name))
+        print("{} images saved in {}".format(len(summary_images) + real_images_saved, folder +
+                                             folder_name))
 
 
 def get_args():
@@ -154,9 +155,9 @@ def get_args():
                         help="Location of 'result.yaml'. If unset, assumes current folder.")
     parser.add_argument("-r", "--result", default="result.yaml", type=str,
                         help="Filename with results. Default is 'result.yaml'.")
-    parser.add_argument("-s", "--save", action="store_true", default=False, type=bool,
+    parser.add_argument("-s", "--save", action="store_true", default=False,
                         help="Use this option to save image with loss graph to file.")
-    parser.add_argument("-is", "--image_summary", action="store_true", default=False, type=bool,
+    parser.add_argument("-is", "--image_summary", action="store_true", default=False,
                         help="Use this to create folder with summary of generated images "
                              "every epoch.")
     return parser.parse_args()

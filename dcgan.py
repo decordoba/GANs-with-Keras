@@ -233,7 +233,7 @@ def generate(batch_size=128, location=None, filename=None, nice=False, manual_co
         print("Labeling generated images...")
         d_predictions = d.predict(generated_images, verbose=1)
         # Indices of batch_size top predictions
-        best_predictions = d_predictions.argsort()[-batch_size:][::-1]
+        best_predictions = d_predictions.T[0].argsort()[-batch_size:][::-1]
 
         # Plot generated images (only if they can be shown (AGG == False))
         if not AGG:
@@ -245,8 +245,8 @@ def generate(batch_size=128, location=None, filename=None, nice=False, manual_co
         best_images = np.zeros((batch_size, h, w, d), dtype=np.float32)
         for i, pred_idx in enumerate(best_predictions):
             best_images[i, :, :, 0] = generated_images[pred_idx, :, :, 0]
-        save_images_combined(best_images, filename)
-        print("Best generated images saved to {}".format(filename))
+        save_images_combined(best_images, location + "/" + filename)
+        print("Best generated images saved to {}".format(location + "/" + filename))
     else:
         noise = np.random.uniform(-1, 1, size=(batch_size, noise_size))
         print("Generating images...")
@@ -257,17 +257,20 @@ def generate(batch_size=128, location=None, filename=None, nice=False, manual_co
             plot_images(generated_images, invert_colors=True)
 
         # Save to file
-        save_images_combined(generated_images, filename)
-        print("Generated images saved to {}".format(filename))
+        save_images_combined(generated_images, location + "/" + filename)
+        print("Generated images saved to {}".format(location + "/" + filename))
 
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-m", "--mode", choices=["train", "generate"], type=str, default="train")
+    parser.add_argument("-m", "--mode", choices=["train", "generate"], type=str, default="train",
+                        help="'train' will train a GAN on the selected dataset. 'generate' will "
+                             "generate new images from a trained GAN. Default is 'train'.")
     parser.add_argument("-bs", "--batch_size", type=int, default=128)
     parser.add_argument("-d", "--dataset", choices=["mnist", "cifar10", "lumps1", "lumps2"],
                         default="lumps1", type=str, help="Only used in 'train' mode. "
-                                                         "Dataset used for training.")
+                                                         "Dataset used for training. Default is "
+                                                         "'lumps1'.")
     parser.add_argument("-f", "--folder", default=None, type=str,
                         help="Folder where to save data if training / extract data from if "
                              "generating.")
