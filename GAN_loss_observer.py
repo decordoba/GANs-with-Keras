@@ -11,11 +11,19 @@ if r1 != 0 and r2 != 0:
     AGG = True
 from matplotlib import pyplot as plt
 from keras_utils import save_images_combined, load_dataset
+from keras_utils import get_int_input, get_str_input
 import argparse
 import yaml
 import shutil
 import numpy as np
 
+
+def get_config_manually():
+    print("Enter the training configuration manually, or press ENTER to use the default values:")
+    dct = dict()
+    dct["dataset"] = get_str_input("Dataset", "lumps1")
+    dct["batch_size"] = get_int_input("Batch Size", 128, 1)
+    return dct
 
 def plot_dg(g_loss, d_loss, fig_num=0, filename=None, xaxis="Epoch", fig_clear=True,
             xaxis_multiplier=1, plot_mean=0):
@@ -71,7 +79,8 @@ def plot_dg(g_loss, d_loss, fig_num=0, filename=None, xaxis="Epoch", fig_clear=T
         fig.clear()
 
 
-def plot_losses(folder=None, filename=None, save_img=False, image_summary=False):
+def plot_losses(folder=None, filename=None, save_img=False, image_summary=False,
+                manual_config=False):
     if folder is None:
         folder = "."
     if folder[-1] != "/":
@@ -131,25 +140,34 @@ def plot_losses(folder=None, filename=None, save_img=False, image_summary=False)
         for img_path in summary_images:
             shutil.copyfile(folder + img_path, folder + folder_name + "/" + img_path)
         real_images_saved = 0
-        try:
-            with open(folder + "config.yaml", "r") as f:
-                try:
-                    train_config = yaml.load(f)
-                    dataset = train_config["dataset"]
-                    batch_size = train_config["batch_size"]
-                    print("Loading dataset {}. This may take a while...".format(dataset))
-                    real_images = load_dataset(dataset, rng=(-1, 1))
-                    # Save 5 real images
-                    for i in range(5):  # Assume we will always have more than 5 batches
-                        image_batch = real_images[i * batch_size:(i + 1) * batch_size]
-                        save_images_combined(image_batch, folder + folder_name + "/" +
-                                             "real_image_{}.png".format(i))
-                        real_images_saved += 1
-                except yaml.YAMLError as YamlError:
-                    print("There was a problem parsing 'config.yaml'. Plotting aborted.")
-                    print(YamlError)
-        except FileNotFoundError:
-            pass
+        if manual_config:
+            train_config = get_config_manually()
+            dataset = train_config["dataset"]
+            batch_size = train_config["batch_size"]
+        else:
+            try:
+                with open(folder + "config.yaml", "r") as f:
+                    try:
+                        train_config = yaml.load(f)
+                        dataset = train_config["dataset"]
+                        batch_size = train_config["batch_size"]
+                    except yaml.YAMLError as YamlError:
+                        print("There was a problem parsing 'config.yaml', no real images saved.")
+                        print(YamlError)
+                        dataset = None
+            except FileNotFoundError:
+                print("File 'config.yaml' not found, no real images saved.")
+                dataset = None
+        if dataset is not None:
+            print("Loading dataset {}. This may take a while...".format(dataset))
+            real_images = load_dataset(dataset, rng=(-1, 1))
+            # Save 5 real images
+            for i in range(5):  # Assume we will always have more than 5 batches
+                image_batch = real_images[i * batch_size:(i + 1) * batch_size]
+                save_images_combined(image_batch, folder + folder_name + "/" +
+                                     "real_image_{}.png".format(i))
+                real_images_saved += 1
+
         print("{} images saved in {}".format(len(summary_images) + real_images_saved, folder +
                                              folder_name))
 
@@ -165,9 +183,11 @@ def get_args():
     parser.add_argument("-is", "--image_summary", action="store_true", default=False,
                         help="Use this to create folder with summary of generated images "
                              "every epoch.")
+    parser.add_argument("-mc", "--manual_config", action="store_true", default=False,
+                        help="If no config file exists, the required are entered manually.")
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     args = get_args()
-    plot_losses(args.folder, args.result, args.save, args.image_summary)
+    plot_losses(args.folder, args.result, args.save, args.image_summary, args.manual_config)
