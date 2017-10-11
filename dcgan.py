@@ -119,7 +119,7 @@ def train(dataset="mnist", batch_size=128, epochs=100, noise_size=100, location=
 
     # Create file that saves information about model (read by generator)
     config_dict = {"input_shape": input_shape, "dataset": dataset, "batch_size": batch_size,
-                   "epochs": epochs, "noise_size": noise_size,
+                   "epochs": epochs, "batches": batches, "noise_size": noise_size,
                    "generator_weights": [], "discriminator_weights": [],
                    "generator_model": generator_model.__name__,
                    "discriminator_model": discriminator_model.__name__}
