@@ -10,8 +10,8 @@ if r1 != 0 and r2 != 0:
     mpl.use('Agg')
     AGG = True
 from matplotlib import pyplot as plt
-from keras_utils import save_images_combined, load_dataset
-from keras_utils import get_int_input, get_str_input
+from gan_utils import save_images_combined, load_dataset
+from gan_utils import get_int_input, get_str_input
 import argparse
 import yaml
 import shutil

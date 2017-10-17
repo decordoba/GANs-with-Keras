@@ -162,7 +162,7 @@ def get_params_from_shape(shp):
         d = 1  # B/W
     return h, w, d
 
-def load_dataset(dataset, rng=(-1, 1)): 
+def load_dataset(dataset, rng=(-1, 1)):
     # Returns data from dataset with shape (n, h, w, d), normalized from rng[0] to rng[1]
     min_val = None
     max_val = None
