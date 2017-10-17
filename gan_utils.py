@@ -2,165 +2,13 @@ import os
 import numpy as np
 from keras.utils import np_utils
 from keras import backend
-from keras.layers.wrappers import Wrapper
-from keras.models import Sequential
 from keras.datasets import mnist, cifar10
 from keras_plot import plot_history
 from datetime import datetime
 from PIL import Image
 import math
-import pydot
+from keras_utils import plot_model, get_params_from_shape  # Get it from github.com/decordoba/deep-learning-with-Keras
 
-
-GRAPHVIZ_NOT_INSTALLED = False
-
-
-def plot_model(model, to_file='model.png', show_shapes=False, show_layer_names=True,
-               show_params=False):
-    """
-    Extension of keras.utils.plot_model
-    Plots model to an image, and also params of layers (original does not do it)
-    """
-    # To avoid program crashing, we will not try to plot the model without Graphviz
-    global GRAPHVIZ_NOT_INSTALLED
-    if GRAPHVIZ_NOT_INSTALLED:
-        return False
-    dot = model_to_dot(model, show_shapes, show_layer_names, show_params)
-    _, extension = os.path.splitext(to_file)
-    if not extension:
-        extension = 'png'
-    else:
-        extension = extension[1:]
-    try:
-        dot.write(to_file, format=extension)
-        return True
-    except Exception:  # A generic Exception is raised if Graphviz is not installed
-        GRAPHVIZ_NOT_INSTALLED = True
-        print("Graphviz is not installed, therefore models will not be generated")
-        return False
-
-def model_to_dot(model, show_shapes=False, show_layer_names=True, show_params=False):
-    """Converts a Keras model to dot format.
-
-    # Arguments
-        model: A Keras model instance.
-        show_shapes: whether to display shape information.
-        show_layer_names: whether to display layer names.
-        show_params: whether to display layer parameteres. (for now only works for some layers)
-
-    # Returns
-        A `pydot.Dot` instance representing the Keras model.
-    """
-
-    dot = pydot.Dot()
-    dot.set('rankdir', 'TB')
-    dot.set('concentrate', True)
-    dot.set_node_defaults(shape='record')
-
-    if isinstance(model, Sequential):
-        if not model.built:
-            model.build()
-        model = model.model
-    layers = model.layers
-
-    # Create graph nodes.
-    for layer in layers:
-        layer_id = str(id(layer))
-
-        # Append a wrapped layer's label to node's label, if it exists.
-        layer_name = layer.name
-        class_name = layer.__class__.__name__
-        if isinstance(layer, Wrapper):
-            layer_name = '{}({})'.format(layer_name, layer.layer.name)
-            child_class_name = layer.layer.__class__.__name__
-            class_name = '{}({})'.format(class_name, child_class_name)
-
-        # Create node's label.
-        if show_layer_names:
-            label = '{}: {}'.format(layer_name, class_name)
-        else:
-            label = class_name
-
-        if show_params:
-            if "Conv2D" in class_name:
-                label += "|filters: {}\nkernel_size: {}".format(layer.filters, layer.kernel_size)
-                label += "\nactivation: {}\npadding: {}".format(str(layer.activation).split()[1],
-                                                                layer.padding)
-                label += "\nstrides: {}\nuse_bias: {}".format(layer.strides, layer.use_bias)
-                try:
-                    label += "\nkernel_reg: {}".format(str(layer.kernel_regularizer).split()[1])
-                except IndexError:
-                    label += "\nkernel_reg: {}".format(str(layer.kernel_regularizer))
-                try:
-                    label += "\nbias_reg: {}".format(str(layer.bias_regularizer).split()[1])
-                except IndexError:
-                    label += "\nbias_reg: {}".format(str(layer.bias_regularizer))
-            elif "MaxPooling2D" in class_name or "AveragePooling2D" in class_name:
-                label += "|pool_size: {}".format(layer.pool_size)
-                label += "\nstrides: {}\npadding: {}".format(layer.strides, layer.padding)
-            elif "Dropout" in class_name:
-                label += "|rate: {}".format(layer.rate)
-            elif "Dense" in class_name:
-                label += "|units: {}\nactivation: {}".format(layer.units,
-                                                              str(layer.activation).split()[1])
-            elif "Activation" in class_name:
-                label += "|activation: {}".format(str(layer.activation).split()[1])
-            elif "BatchNormalization" in class_name:
-                try:
-                    label += "\ngamma_reg: {}".format(str(layer.gamma_regularizer).split()[1])
-                except IndexError:
-                    label += "\ngamma_reg: {}".format(str(layer.gamma_regularizer))
-                try:
-                    label += "\nbeta_reg: {}".format(str(layer.beta_regularizer).split()[1])
-                except IndexError:
-                    label += "\nbeta_reg: {}".format(str(layer.beta_regularizer))
-
-        # Rebuild the label as a table including input/output shapes.
-        if show_shapes:
-            try:
-                outputlabels = str(layer.output_shape)
-            except AttributeError:
-                outputlabels = 'multiple'
-            if hasattr(layer, 'input_shape'):
-                inputlabels = str(layer.input_shape)
-            elif hasattr(layer, 'input_shapes'):
-                inputlabels = ', '.join(
-                    [str(ishape) for ishape in layer.input_shapes])
-            else:
-                inputlabels = 'multiple'
-            label = '%s\n|{input:|output:}|{{%s}|{%s}}' % (label, inputlabels, outputlabels)
-
-        node = pydot.Node(layer_id, label=label)
-        dot.add_node(node)
-
-    # Connect nodes with edges.
-    for layer in layers:
-        layer_id = str(id(layer))
-        for i, node in enumerate(layer.inbound_nodes):
-            node_key = layer.name + '_ib-' + str(i)
-            if node_key in model.container_nodes:
-                for inbound_layer in node.inbound_layers:
-                    inbound_layer_id = str(id(inbound_layer))
-                    layer_id = str(id(layer))
-                    dot.add_edge(pydot.Edge(inbound_layer_id, layer_id))
-    return dot
-
-def get_params_from_shape(shp):
-    # Expects a 2 or 3 or 4 params shape like (64, 64), or (32, 32, 3), or (60000, 32, 32, 3)
-    if len(shp) > 3:
-        shp = shp[-3:]
-    h = shp[0]
-    w = shp[1]
-    try:
-        d = shp[2]
-        if d > 4:
-            # Assume max depth is 4, so we got shp like (60000, 28, 28)
-            h = shp[1]
-            w = shp[2]
-            d = 1
-    except IndexError:
-        d = 1  # B/W
-    return h, w, d
 
 def load_dataset(dataset, rng=(-1, 1)):
     # Returns data from dataset with shape (n, h, w, d), normalized from rng[0] to rng[1]
@@ -210,10 +58,11 @@ def combine_images(generated_images):
         for index, img in enumerate(generated_images):
             i = int(index / cols)
             j = index % cols
-            image[i*h:(i+1)*h, j*w:(j+1)*w, depth] = img[:, :]
+            image[i*h:(i+1)*h, j*w:(j+1)*w, 0] = img[:, :]
     if d == 1:
         image = image[:, :, 0]
     return image  # Shape will always be (h, w, d) or (h, w) if d == 1
+
 
 def save_images_combined(images, filename):
     """
@@ -223,6 +72,7 @@ def save_images_combined(images, filename):
     image = combine_images(images)
     image = image * 127.5 + 127.5
     Image.fromarray(image.astype(np.uint8)).save(filename)
+
 
 def format_dataset(x_train, y_train, x_test=None, y_test=None, data_reduction=None,
                    to_categorical=False, ret_labels=False, verbose=False):
@@ -291,6 +141,7 @@ def format_dataset(x_train, y_train, x_test=None, y_test=None, data_reduction=No
         return (X_train, Y_train), input_shape
     return (X_train, Y_train), (X_test, Y_test), input_shape
 
+
 def save_model_data(model=None, results=None, location=None, save_yaml=True, save_json=False,
                     save_image=True, save_weights=True, save_full_model=False, history=None):
     """
@@ -325,6 +176,7 @@ def save_model_data(model=None, results=None, location=None, save_yaml=True, sav
         with open(location + "/result.yaml", "w") as f:
             f.write(result)
 
+
 def get_current_time(time=True, date=False):
     # Get time (and date) in a human-readable format (yyyy-mm-dd hh:mm:ss)
     now = datetime.now()
@@ -334,6 +186,7 @@ def get_current_time(time=True, date=False):
     if time:
         s += "{:02d}:{:02d}:{:02d}".format(now.hour, now.minute, now.second)
     return s.strip()
+
 
 def get_int_input(text, default=None, min_val=None, max_val=None):
     # Get number entered by user. Continue asking until number is valid and between min_val and
