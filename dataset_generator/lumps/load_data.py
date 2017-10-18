@@ -3,7 +3,7 @@
 import os
 import numpy as np
 from datetime import datetime
-from dataset_generator.lumps.LumpyBgnd import lumpy_backround, create_lumps_pos_matrix
+from LumpyBgnd import lumpy_backround, create_lumps_pos_matrix
 
 
 def get_current_time(time=True, date=False):
@@ -40,7 +40,8 @@ def generate_lumps_matrix(train_size=60000, test_size=10000, verbose=False):
         x_train[i] = pos_matrix
         y_train[i] = image
         if (i + 1) % print_feedback == 0:
-            print("{}% of training dataset generated".format((i + 1) * 100 / train_size))
+            print("{}% of training dataset generated ({} samples)".format(
+                (i + 1) * 100 / train_size, i + 1))
     if verbose:
         print_feedback = int(test_size * fdbk_percentage / 100)
     else:
@@ -55,15 +56,19 @@ def generate_lumps_matrix(train_size=60000, test_size=10000, verbose=False):
         x_test[i] = pos_matrix
         y_test[i] = image
         if (i + 1) % print_feedback == 0:
-            print("{}% of test dataset generated".format((i + 1) * 100 / test_size))
+            print("{}% of test dataset generated ({} samples)".format((i + 1) * 100 / test_size,
+                                                                      i + 1))
     return (x_train, y_train), (x_test, y_test)
 
 
-def load_data(dataset, filename_out="lumps"):
+def load_data(dataset, filename_out=None):
+    if filename_out is None:
+        filename_out = dataset
     if dataset == "lumps":
         path = "./dataset/"
     elif dataset == "lumps_matrix":
-        generate_lumps_matrix(train_size=60000, test_size=10000, verbose=True)
+        data = generate_lumps_matrix(train_size=60000, test_size=10000, verbose=True)
+        np.save(filename_out, data)
         return
     else:
         raise KeyError("Unknown dataset: {}".format(dataset))
@@ -87,4 +92,5 @@ def load_data(dataset, filename_out="lumps"):
 
 
 if __name__ == "__main__":
-    load_data("lumps")
+    # load_data("lumps")
+    load_data("lumps_matrix")
