@@ -45,6 +45,14 @@ if __name__ == "__main__":
         folder = "{}_{:02d}.{:02d}.{:02d}".format(now.date(), now.hour, now.minute, now.second)
 
     (x_train, y_train), (x_test, y_test) = np.load("./datasets/lumps_matrix1/lumps_matrix1.npy")
+    if len(x_train.shape) < 4:
+        x_train = x_train[:, :, :, None]
+    if len(y_train.shape) < 4:
+        y_train = y_train[:, :, :, None]
+    if len(x_test.shape) < 4:
+        x_test = x_test[:, :, :, None]
+    if len(y_test.shape) < 4:
+        y_test = y_test[:, :, :, None]
     if args.data_reduction > 1:
         x_train = x_train[:x_train.shape[0] // args.data_reduction]
         y_train = y_train[:y_train.shape[0] // args.data_reduction]
@@ -52,7 +60,8 @@ if __name__ == "__main__":
         y_test = y_test[:y_test.shape[0] // args.data_reduction]
     train_set = (x_train, y_train)
     test_set = (x_test, y_test)
-    input_shape = (train_set[0].shape[1], train_set[0].shape[2], 1)
+
+    input_shape = x_train.shape[1:]
     h, w, d = get_params_from_shape(input_shape)
     pixels_input = input_shape[0] * input_shape[1]
     optimizer = optimizers.Adam()
@@ -63,7 +72,7 @@ if __name__ == "__main__":
                input_shape=input_shape),
         Conv2D(filters=n_filters, kernel_size=(3, 3), activation="relu", padding="same"),
         MaxPooling2D(pool_size=(2, 2)),
-        Dropout(0.5),
+        Dropout(0.25),
         Flatten(),
         Dense(units=pixels_input * n_filters // 16, activation="relu"),
         Dense(units=pixels_input * n_filters // 16, activation="relu"),
@@ -73,7 +82,7 @@ if __name__ == "__main__":
         UpSampling2D(size=(2, 2)),
         Conv2D(filters=n_filters, kernel_size=(3, 3), activation="relu", padding="same"),
         UpSampling2D(size=(2, 2)),
-        Conv2D(filters=1, kernel_size=(3, 3), activation="relu", padding="same")
+        Conv2D(filters=d, kernel_size=(3, 3), activation="relu", padding="same")
     ]
 
     flexible_neural_net(train_set, test_set, optimizer, loss, *layers, batch_size=args.batch_size,
