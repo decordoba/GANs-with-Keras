@@ -2,7 +2,7 @@
 
 import argparse
 from time import clock
-from datetime import timedelta
+from datetime import timedelta, datetime
 from keras.layers import Dense, Dropout, Activation, Flatten, Reshape
 from keras.layers.normalization import BatchNormalization
 from keras.layers.convolutional import UpSampling2D
@@ -29,7 +29,7 @@ def get_args():
                         help="Size of every batch. Default is 32.")
     parser.add_argument("-s", "--silent", dest="silent", action="store_true", default=False,
                         help="Set verbose mode to false.")
-    parser.add_argument("-dr", "--dry_run", dest="dry_run", action="store_true", default=False,
+    parser.add_argument("-dry", "--dry_run", dest="dry_run", action="store_true", default=False,
                         help="Run in dry run mode (does not fit the model).")
     return parser.parse_args()
 
@@ -39,6 +39,10 @@ if __name__ == "__main__":
     t = clock()
 
     args = get_args()
+    location = args.folder
+    if location is None:
+        now = datetime.now()
+        folder = "{}_{:02d}.{:02d}.{:02d}".format(now.date(), now.hour, now.minute, now.second)
 
     (x_train, y_train), (x_test, y_test) = np.load("./datasets/lumps_matrix1/lumps_matrix1.npy")
     if args.data_reduction > 1:
@@ -48,26 +52,28 @@ if __name__ == "__main__":
         y_test = y_test[:y_test.shape[0] // args.data_reduction]
     train_set = (x_train, y_train)
     test_set = (x_test, y_test)
-    input_shape = train_set[0][1:]
+    input_shape = (train_set[0].shape[1], train_set[0].shape[2], 1)
     h, w, d = get_params_from_shape(input_shape)
     pixels_input = input_shape[0] * input_shape[1]
     optimizer = optimizers.Adam()
     loss = losses.mean_squared_error
+    n_filters = 32
     layers = [
-        Conv2D(filters=64, kernel_size=(3, 3), activation="relu", input_shape=input_shape),
-        Conv2D(filters=64, kernel_size=(3, 3), activation="relu", input_shape=input_shape),
+        Conv2D(filters=n_filters, kernel_size=(3, 3), activation="relu", padding="same",
+               input_shape=input_shape),
+        Conv2D(filters=n_filters, kernel_size=(3, 3), activation="relu", padding="same"),
         MaxPooling2D(pool_size=(2, 2)),
-        Dropout(0.25),
+        Dropout(0.5),
         Flatten(),
-        Dense(units=pixels_input // 16, activation="relu"),
-        Dense(units=pixels_input, activation="relu"),
+        Dense(units=pixels_input * n_filters // 16, activation="relu"),
+        Dense(units=pixels_input * n_filters // 16, activation="relu"),
         BatchNormalization(),
         Activation("relu"),
-        Reshape((h // 4, w // 4,), input_shape=(pixels_input // 16,)),
+        Reshape((h // 4, w // 4, n_filters), input_shape=(pixels_input // 16,)),
         UpSampling2D(size=(2, 2)),
-        Conv2D(filters=64, kernel_size=(3, 3), activation="relu"),
+        Conv2D(filters=n_filters, kernel_size=(3, 3), activation="relu", padding="same"),
         UpSampling2D(size=(2, 2)),
-        Conv2D(filters=1, kernel_size=(3, 3), activation="relu")
+        Conv2D(filters=1, kernel_size=(3, 3), activation="relu", padding="same")
     ]
 
     flexible_neural_net(train_set, test_set, optimizer, loss, *layers, batch_size=args.batch_size,
