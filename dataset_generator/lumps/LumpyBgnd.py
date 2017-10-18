@@ -1,8 +1,8 @@
 import numpy as np
-import random
 
 
-def lumpy_backround(dim=(64, 64), nbar=200, dc=10, lump_function="GaussLmp", pars=(1, 10), discretize_lumps_positions=False, rng=None):
+def lumpy_backround(dim=(64, 64), nbar=200, dc=10, lump_function="GaussLmp", pars=(1, 10),
+                    discretize_lumps_positions=False, rng=None):
     """
     : param dim: Output image dimensions. Can be 2D tuple or int (will convert it to a square image)
     : param nbar: Mean number of lumps in the image
@@ -19,7 +19,7 @@ def lumpy_backround(dim=(64, 64), nbar=200, dc=10, lump_function="GaussLmp", par
 
     # Assume square image if dim is an integer
     if isinstance(dim, int):
-      dim = (dim, dim)
+        dim = (dim, dim)
 
     # Initialize values that will be returned
     image = dc * np.ones(dim)
@@ -64,12 +64,14 @@ def lumpy_backround(dim=(64, 64), nbar=200, dc=10, lump_function="GaussLmp", par
 
     return image, n, lumps_pos
 
+
 def create_lumps_pos_matrix(lumps_pos, dim=(64, 64), discrete_lumps_positions=False):
     """
     :param dim: Output image dimensions. Can be 2D tuple or int (will convert it to a square image)
     :param lumps_pos: Position of every lump in image
-    :param discrete_lumps_positions: # If True, all positions will be discretized (floored), else, they can be floats
-    :return: 
+    :param discrete_lumps_positions: If True, all positions will be discretized (floored), else,
+                                     they can be floats
+    :return: matrix with lumps positions
     """
     # Assume square image if dim is an integer
     if isinstance(dim, int):
@@ -103,21 +105,21 @@ def create_lumps_pos_matrix(lumps_pos, dim=(64, 64), discrete_lumps_positions=Fa
     
 
 if __name__ == "__main__":
-    dim = 5
-    nbar = 2
-    dc = 0
-    lump_function = "GaussLmp"
-    pars = (1, 1)
-    discrete_lumps = True
-    rng = (0, 255)
-    image, n, lumps_pos = lumpy_backround(dim=dim, nbar=nbar, dc=dc, lump_function=lump_function, pars=pars,
-                                          discretize_lumps_positions=discrete_lumps, rng=rng)
-    
-    
-    image_pos = create_lumps_pos_matrix(dim=dim, lumps_pos=lumps_pos)
+    DIM = 5
+    NBAR = 2
+    DC = 0
+    LUMP_FUNCTION = "GaussLmp"
+    PARS = (1, 1)
+    DISCRETE_LUMPS = False
+    RANGE_VALUES = (0, 255)
+
+    image, n, lumps_pos = lumpy_backround(dim=DIM, nbar=NBAR, dc=DC, lump_function=LUMP_FUNCTION,
+                                          pars=PARS, discretize_lumps_positions=DISCRETE_LUMPS,
+                                          rng=RANGE_VALUES)
+
+    image_pos = create_lumps_pos_matrix(dim=DIM, lumps_pos=lumps_pos)
     
     print("N:", n)
     print("Lumps position:", lumps_pos)
     print("Image:\n", image)
     print("Position matrix:\n", image_pos)
-    

@@ -15,27 +15,28 @@ def load_dataset(dataset, rng=(-1, 1)):
     min_val = None
     max_val = None
     if dataset == "lumps1" or dataset == "lumps":
-        X_train = np.load("./datasets/lumps1/lumps1.npy")  # We use all data for training
+        x_train = np.load("./datasets/lumps1/lumps1.npy")  # We use all data for training
     elif dataset == "lumps2":
-        X_train = np.load("./datasets/lumps2/lumps2.npy")  # We use all data for training
+        x_train = np.load("./datasets/lumps2/lumps2.npy")  # We use all data for training
     elif dataset == "mnist":
-        (X_train, y_train), (X_test, y_test) = mnist.load_data()
+        (x_train, y_train), (x_test, y_test) = mnist.load_data()
         min_val = 0.0
         max_val = 255.0
     elif dataset == "cifar10":
-        (X_train, y_train), (X_test, y_test) = cifar10.load_data()
+        (x_train, y_train), (X_test, y_test) = cifar10.load_data()
         min_val = 0.0
         max_val = 255.0
     else:
         raise KeyError("Unknown dataset: {}".format(dataset))
     if min_val is None or max_val is None:
-        min_val = X_train.min()
-        max_val = X_train.max()
+        min_val = x_train.min()
+        max_val = x_train.max()
     # Normalize data: All number will go from rng[0] to rng[1]
-    X_train = ((X_train.astype(np.float32) - min_val) / (max_val - min_val) * (rng[1] - rng[0])) + rng[0]
-    if len(X_train.shape) < 4:
-        X_train = X_train[:, :, :, None]  # Add depth to shape
-    return X_train
+    x_train = ((x_train.astype(np.float32) - min_val) / (max_val - min_val) * (rng[1] - rng[0])) + rng[0]
+    if len(x_train.shape) < 4:
+        x_train = x_train[:, :, :, None]  # Add depth to shape
+    return x_train
+
 
 def combine_images(generated_images):
     # Generates image which is a combination of all the generated_images,
