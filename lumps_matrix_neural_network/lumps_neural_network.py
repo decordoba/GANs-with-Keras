@@ -42,8 +42,9 @@ if __name__ == "__main__":
     location = args.folder
     if location is None:
         now = datetime.now()
-        folder = "{}_{:02d}.{:02d}.{:02d}".format(now.date(), now.hour, now.minute, now.second)
+        location = "{}_{:02d}.{:02d}.{:02d}".format(now.date(), now.hour, now.minute, now.second)
 
+    print("Loading dataset...")
     (x_train, y_train), (x_test, y_test) = np.load("./datasets/lumps_matrix1/lumps_matrix1.npy")
     if len(x_train.shape) < 4:
         x_train = x_train[:, :, :, None]
@@ -60,6 +61,10 @@ if __name__ == "__main__":
         y_test = y_test[:y_test.shape[0] // args.data_reduction]
     train_set = (x_train, y_train)
     test_set = (x_test, y_test)
+    print("Dataset loaded. x_train: {}".format(x_train.shape))
+    print("                y_train: {}".format(y_train.shape))
+    print("                x_test:  {}".format(x_test.shape))
+    print("                y_test:  {}".format(y_test.shape))
 
     input_shape = x_train.shape[1:]
     h, w, d = get_params_from_shape(input_shape)
@@ -85,8 +90,10 @@ if __name__ == "__main__":
         Conv2D(filters=d, kernel_size=(3, 3), activation="relu", padding="same")
     ]
 
+    print("Compiling and training neural network...")
     flexible_neural_net(train_set, test_set, optimizer, loss, *layers, batch_size=args.batch_size,
-                        epochs=args.number_epochs, early_stopping=10, location=args.folder,
+                        epochs=args.number_epochs, early_stopping=10, location=location,
                         verbose=not args.silent, dry_run=args.dry_run)
+    print("Training finished. Results saved in {}".format(location))
 
     print("\nTotal Time Taken: {} s".format(timedelta(seconds=clock() - t)))
