@@ -9,8 +9,9 @@ from keras.layers.convolutional import UpSampling2D
 from keras.layers import Conv2D, MaxPooling2D
 from keras import losses
 from keras import optimizers
-from keras_utils import get_params_from_shape
-from keras_utils import flexible_neural_net
+from keras_utils import get_params_from_shape  # Get it from github.com/decordoba/deep-learning-with-Keras
+from keras_utils import flexible_neural_net  # Get it from github.com/decordoba/deep-learning-with-Keras
+from keras_plot import plot_two_images, AGG  # Get it from github.com/decordoba/deep-learning-with-Keras
 import numpy as np
 
 
@@ -25,8 +26,8 @@ def get_args():
     parser.add_argument('-dr', '--data_reduction', type=int, default=1,
                         help="Number by which to divide the data used. For example, dr=3 means "
                         "only 1/3 of the data is used. Default is 1.")
-    parser.add_argument('-bs', '--batch_size', type=int, default=32,
-                        help="Size of every batch. Default is 32.")
+    parser.add_argument('-bs', '--batch_size', type=int, default=64,
+                        help="Size of every batch. Default is 64.")
     parser.add_argument("-s", "--silent", dest="silent", action="store_true", default=False,
                         help="Set verbose mode to false.")
     parser.add_argument("-dry", "--dry_run", dest="dry_run", action="store_true", default=False,
@@ -65,6 +66,10 @@ if __name__ == "__main__":
     print("                y_train: {}".format(y_train.shape))
     print("                x_test:  {}".format(x_test.shape))
     print("                y_test:  {}".format(y_test.shape))
+
+    # Plot real images from dataset (only if they can be shown (AGG == False))
+    if not AGG:
+        plot_two_images(x_train, y_train, invert_colors=True, title1="X", title2="Y")
 
     input_shape = x_train.shape[1:]
     h, w, d = get_params_from_shape(input_shape)
