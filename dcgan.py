@@ -10,7 +10,7 @@ from keras.optimizers import SGD
 from keras_utils import plot_model, get_params_from_shape  # Get it from github.com/decordoba/deep-learning-with-Keras
 from gan_utils import save_images_combined, load_dataset
 from gan_utils import get_current_time, get_int_input, get_str_input
-from keras_plot import plot_images, AGG
+from keras_plot import plot_images, AGG  # Get it from github.com/decordoba/deep-learning-with-Keras
 import numpy as np
 import yaml
 from datetime import datetime

@@ -3,7 +3,7 @@ import numpy as np
 from keras.utils import np_utils
 from keras import backend
 from keras.datasets import mnist, cifar10
-from keras_plot import plot_history
+from keras_plot import plot_history  # Get it from github.com/decordoba/deep-learning-with-Keras
 from datetime import datetime
 from PIL import Image
 import math
