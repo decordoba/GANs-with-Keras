@@ -1,14 +1,5 @@
 #!/usr/bin/env python3.5
-import matplotlib as mpl
-import os
-AGG = False
-r1 = os.system('python3 -c "import matplotlib.pyplot as plt;plt.figure()"')  # Linux
-r2 = os.system('py -c "import matplotlib.pyplot as plt;plt.figure()"')  # Windows
-# This line allows mpl to run with no DISPLAY defined
-if r1 != 0 and r2 != 0:
-    print("$DISPLAY not detected, matplotlib set to use 'Agg' backend")
-    mpl.use('Agg')
-    AGG = True
+from keras_plot import AGG  # Get it from github.com/decordoba/deep-learning-with-Keras
 from matplotlib import pyplot as plt
 from gan_utils import save_images_combined, load_dataset
 from gan_utils import get_int_input, get_str_input
@@ -151,12 +142,11 @@ def plot_losses(folder=None, filename=None, save_img=False, image_summary=False,
     # Save results images
     if save_img:
         output_filename = "GAN_loss.png"
-        plot_dg(g_loss=g_losses, d_loss=d_losses, xaxis="Epoch", filename=folder + output_filename,
-                xaxis_multiplier=1/num_batches)
+        plot_dg(g_loss=g_losses, d_loss=d_losses, xaxis="Epoch", filename=folder + output_filename)
         print("Raw results saved in '{}'".format(folder + output_filename))
         output_filename = "GAN_loss_smooth.png"
         plot_dg(g_loss=g_losses, d_loss=d_losses, xaxis="Epoch", plot_mean=-50,
-                filename=folder + output_filename, xaxis_multiplier=1/num_batches)
+                filename=folder + output_filename)
         print("Averaged results saved in '{}'".format(folder + output_filename))
 
     # Save image summary. Will save all, only originals or only generated
