@@ -17,3 +17,10 @@ __pycache__/
 /.idea
 /training_dataset-*
 /datasets
+
+# Files from deep-learning-with-Keras
+/deep-learning-with-Keras
+/keras_utils.py
+/keras_plot.py
+/keras_experiments.py
+/keras_std.py
