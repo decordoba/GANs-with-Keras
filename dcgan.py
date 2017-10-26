@@ -56,13 +56,14 @@ def train(dataset="mnist", batch_size=128, epochs=100, noise_size=100, location=
         gan_optimizer = SGD(lr=0.0005, momentum=0.9, nesterov=True)
     if location is None:
         now = datetime.now()
-        date = "{}_{:02d}.{:02d}.{:02d}".format(now.date(), now.hour, now.minute, now.second)
-        location = "output/{}/{}".format(dataset, date)
+        location = "{}_{:02d}.{:02d}.{:02d}".format(now.date(), now.hour, now.minute, now.second)
     if generator_model is None:
         generator_model = default_generator_model
     if discriminator_model is None:
         discriminator_model = default_discriminator_model
 
+    # Force location to be in output/dataset/
+    location = "output/{}/{}".format(dataset, location)
     # Create folder where we will save all images
     try:
         os.makedirs(location)
@@ -94,12 +95,12 @@ def train(dataset="mnist", batch_size=128, epochs=100, noise_size=100, location=
 
     # Plot model used
     can_plot = True
-    can_plot &= plot_model(d, "discriminator_model.png", show_shapes=True, show_layer_names=False,
-                           show_params=True)
-    can_plot &= plot_model(g, "generator_model.png", show_shapes=True, show_layer_names=False,
-                           show_params=True)
-    can_plot &= plot_model(gan, "gan_model.png", show_shapes=True, show_layer_names=False,
-                           show_params=True)
+    can_plot &= plot_model(d, location + "discriminator_model.png", show_shapes=True,
+                           show_layer_names=False, show_params=True)
+    can_plot &= plot_model(g, location + "generator_model.png", show_shapes=True,
+                           show_layer_names=False, show_params=True)
+    can_plot &= plot_model(gan, location + "gan_model.png", show_shapes=True,
+                           show_layer_names=False, show_params=True)
     if not can_plot:
         # Print summary of models if they could not be plotted and saved
         g.summary()
