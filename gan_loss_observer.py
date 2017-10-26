@@ -199,7 +199,8 @@ def get_args():
                         "only real images, only generated imaged in every epoch, or both. "
                         "Default is 'both'.")
     parser.add_argument("-mc", "--manual_config", action="store_true", default=False,
-                        help="If no config file exists, the required are entered manually.")
+                        help="If no config file exists, the required values can be entered "
+                             "manually.")
     return parser.parse_args()
 
 

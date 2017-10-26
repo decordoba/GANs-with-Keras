@@ -79,19 +79,18 @@ def train(dataset="mnist", batch_size=128, epochs=100, noise_size=100, location=
     if not AGG:
         plot_images(x_train, invert_colors=True, title="Original data")
 
-    # Create models G, D and GAN
+    # Create models G, D and GAN, and compile them
     input_shape = x_train.shape[1:]
     d = discriminator_model(input_shape)  # Maps image to label
+    d.trainable = True
+    d.compile(loss='binary_crossentropy', optimizer=d_optimizer)
     g = generator_model(noise_size, input_shape)  # Maps noise to image
+    g.compile(loss='binary_crossentropy', optimizer=g_optimizer)
+    d.trainable = False  # In gan model, discriminator weights are frozen
     gan = Sequential()
     gan.add(g)
     gan.add(d)
-
-    # Compile models G, D and GAN
-    g.compile(loss='binary_crossentropy', optimizer=g_optimizer)
     gan.compile(loss='binary_crossentropy', optimizer=gan_optimizer)
-    d.trainable = True
-    d.compile(loss='binary_crossentropy', optimizer=d_optimizer)
 
     # Plot model used
     can_plot = True
@@ -142,14 +141,12 @@ def train(dataset="mnist", batch_size=128, epochs=100, noise_size=100, location=
             x = np.concatenate((x_real, x_fake))
             y = [1] * batch_size + [0] * batch_size
             # Calculate discriminator loss from dataset X and y
-            d.trainable = True
             d_loss = d.train_on_batch(x, y)
             d_losses.append(d_loss)
 
             # Generate fake images with generator
             noise = np.random.uniform(-1, 1, (batch_size, noise_size))
             # Calculate generator loss from noise
-            d.trainable = False
             g_loss = gan.train_on_batch(noise, [1] * batch_size)
             g_losses.append(g_loss)
 
@@ -282,8 +279,8 @@ def get_args():
     parser.add_argument("-ne", "--number_epochs", type=int, default=100, help="Only used in "
                         "'train' mode. Number of epochs the GAN will be trained. Default is 100.")
     parser.add_argument("-ns", "--noise_size", type=int, default=100, help="Only used in 'train' "
-                        "mode. Length of random input vector that the generator expects. Default "
-                        "is 100.")
+                        "mode. Length of random input vector used by the generator to generate "
+                        "new images. Default is 100.")
     parser.add_argument("-sf", "--save_frequency", type=int, default=10, help="Only used in "
                         "'train' mode. How often a new weights file is created (how many epochs "
                         "between the different weight files are created). Default is 10.")
@@ -299,10 +296,12 @@ def get_args():
 if __name__ == "__main__":
     args = get_args()
     if args.mode == "train":
+        g_model = default_generator_model
+        d_model = default_discriminator_model
         train(batch_size=args.batch_size, dataset=args.dataset, location=args.folder,
               epochs=args.number_epochs, noise_size=args.noise_size,
-              save_model_frequency=args.save_frequency, generator_model=default_generator_model,
-              discriminator_model=default_discriminator_model)
+              save_model_frequency=args.save_frequency, generator_model=g_model,
+              discriminator_model=d_model)
     elif args.mode == "generate":
         generate(batch_size=args.batch_size, location=args.folder, filename=None, nice=args.nice,
                  manual_config=args.manual_config)
