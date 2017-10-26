@@ -95,11 +95,11 @@ def train(dataset="mnist", batch_size=128, epochs=100, noise_size=100, location=
 
     # Plot model used
     can_plot = True
-    can_plot &= plot_model(d, location + "discriminator_model.png", show_shapes=True,
+    can_plot &= plot_model(d, location + "/discriminator_model.png", show_shapes=True,
                            show_layer_names=False, show_params=True)
-    can_plot &= plot_model(g, location + "generator_model.png", show_shapes=True,
+    can_plot &= plot_model(g, location + "/generator_model.png", show_shapes=True,
                            show_layer_names=False, show_params=True)
-    can_plot &= plot_model(gan, location + "gan_model.png", show_shapes=True,
+    can_plot &= plot_model(gan, location + "/gan_model.png", show_shapes=True,
                            show_layer_names=False, show_params=True)
     if not can_plot:
         # Print summary of models if they could not be plotted and saved
@@ -213,7 +213,7 @@ def generate(batch_size=128, location=None, filename=None, nice=False, manual_co
     if nice:
         discriminator_weights_file = train_config["discriminator_weights"][-1]
         discriminator_model = globals()[train_config["discriminator_model"]]
-    else:  # The only use fo this is to mute annoying warnings from IDE
+    else:  # The only use for this is to mute annoying warnings from IDE
         discriminator_weights_file = None
         discriminator_model = None
 
