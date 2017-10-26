@@ -38,7 +38,7 @@ def get_config_manually(nice=True):
 
 def train(dataset="mnist", batch_size=128, epochs=100, noise_size=100, location=None,
           generator_model=None, discriminator_model=None, g_optimizer=None,
-          d_optimizer=None, gan_optimizer=None):
+          d_optimizer=None, gan_optimizer=None, save_model_frequency=10):
     """
     default location: "output/dataset/data_time"
     default g_optimizer: SGD()
@@ -165,8 +165,10 @@ def train(dataset="mnist", batch_size=128, epochs=100, noise_size=100, location=
                                                                            batch + 1))
 
         # Save weights at the end of every epoch
-        generator_filename = "generator{}.h5".format(((epoch - 1) // 10) * 10)
-        discriminator_filename = "discriminator{}.h5".format(((epoch - 1) // 10) * 10)
+        generator_filename = "generator{}.h5".format(((epoch - 1) // save_model_frequency) *
+                                                     save_model_frequency)
+        discriminator_filename = "discriminator{}.h5".format(((epoch - 1) // save_model_frequency)
+                                                             * save_model_frequency)
         g.save_weights(location + "/" + generator_filename, True)
         d.save_weights(location + "/" + discriminator_filename, True)
         # Append weights locations to config if they have changed
@@ -268,6 +270,12 @@ def get_args():
     parser.add_argument("-m", "--mode", choices=["train", "generate"], type=str, default="train",
                         help="'train' will train a GAN on the selected dataset. 'generate' will "
                              "generate new images from a trained GAN. Default is 'train'.")
+    parser.add_argument("-f", "--folder", default=None, type=str,
+                        help="Folder where to save data if training / extract data from if "
+                             "generating.")
+    parser.add_argument("-d", "--dataset", choices=["mnist", "cifar10", "lumps1", "lumps2"],
+                        default="lumps1", type=str, help="Only used in 'train' mode. "
+                        "Dataset used for training. Default is 'lumps1'.")
     parser.add_argument("-bs", "--batch_size", type=int, default=128, help="Batch size while "
                         "training. Also number of samples saved in every image when training and "
                         "generating. Default is 128.")
@@ -276,12 +284,9 @@ def get_args():
     parser.add_argument("-ns", "--noise_size", type=int, default=100, help="Only used in 'train' "
                         "mode. Length of random input vector that the generator expects. Default "
                         "is 100.")
-    parser.add_argument("-d", "--dataset", choices=["mnist", "cifar10", "lumps1", "lumps2"],
-                        default="lumps1", type=str, help="Only used in 'train' mode. "
-                        "Dataset used for training. Default is 'lumps1'.")
-    parser.add_argument("-f", "--folder", default=None, type=str,
-                        help="Folder where to save data if training / extract data from if "
-                             "generating.")
+    parser.add_argument("-sf", "--save_frequency", type=int, default=10, help="Only used in "
+                        "'train' mode. How often a new weights file is created (how many epochs "
+                        "between the different weight files are created). Default is 10.")
     parser.add_argument("-n", "--nice", dest="nice", action="store_true", default=False,
                         help="Only used in 'generate' mode. Generate more samples and show only "
                              "the ones that scored higher according to the discriminator.")
@@ -296,7 +301,7 @@ if __name__ == "__main__":
     if args.mode == "train":
         train(batch_size=args.batch_size, dataset=args.dataset, location=args.folder,
               epochs=args.number_epochs, noise_size=args.noise_size,
-              generator_model=default_generator_model,
+              save_model_frequency=args.save_frequency, generator_model=default_generator_model,
               discriminator_model=default_discriminator_model)
     elif args.mode == "generate":
         generate(batch_size=args.batch_size, location=args.folder, filename=None, nice=args.nice,
