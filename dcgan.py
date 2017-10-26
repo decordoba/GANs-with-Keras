@@ -267,11 +267,17 @@ def get_args():
     parser.add_argument("-m", "--mode", choices=["train", "generate"], type=str, default="train",
                         help="'train' will train a GAN on the selected dataset. 'generate' will "
                              "generate new images from a trained GAN. Default is 'train'.")
-    parser.add_argument("-bs", "--batch_size", type=int, default=128)
+    parser.add_argument("-bs", "--batch_size", type=int, default=128, help="Batch size while "
+                        "training. Also number of samples saved in every image when training and "
+                        "generating. Default is 128.")
+    parser.add_argument("-ne", "--number_epochs", type=int, default=100, help="Only used in "
+                        "'train' mode. Number of epochs the GAN will be trained. Default is 100.")
+    parser.add_argument("-ns", "--noise_size", type=int, default=100, help="Only used in 'train' "
+                        "mode. Length of random input vector that the generator expects. Default "
+                        "is 100.")
     parser.add_argument("-d", "--dataset", choices=["mnist", "cifar10", "lumps1", "lumps2"],
                         default="lumps1", type=str, help="Only used in 'train' mode. "
-                                                         "Dataset used for training. Default is "
-                                                         "'lumps1'.")
+                        "Dataset used for training. Default is 'lumps1'.")
     parser.add_argument("-f", "--folder", default=None, type=str,
                         help="Folder where to save data if training / extract data from if "
                              "generating.")
@@ -288,6 +294,7 @@ if __name__ == "__main__":
     args = get_args()
     if args.mode == "train":
         train(batch_size=args.batch_size, dataset=args.dataset, location=args.folder,
+              epochs=args.number_epochs, noise_size=args.noise_size,
               generator_model=default_generator_model,
               discriminator_model=default_discriminator_model)
     elif args.mode == "generate":
