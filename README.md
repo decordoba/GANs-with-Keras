@@ -204,11 +204,11 @@ A Google search will tell you more about the problem and how to solve it in othe
 
 You need to install graphviz:
 
-Ubuntu:
+**Ubuntu:**
 
 `sudo apt install graphviz`
 
-CentOS:
+**CentOS:**
 
 `sudo yum install graphviz` 
 
