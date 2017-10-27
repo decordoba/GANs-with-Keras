@@ -46,7 +46,7 @@ def combine_images(generated_images):
     cols = int(math.sqrt(num))
     rows = int(math.ceil(float(num) / cols))
     h, w, d = get_params_from_shape(generated_images.shape[1:])
-    image = np.zeros((h*rows, w*rows, d), dtype=generated_images.dtype)
+    image = np.zeros((h*rows, w*cols, d), dtype=generated_images.dtype)
     try:
         for depth in range(d):
             for index, img in enumerate(generated_images):

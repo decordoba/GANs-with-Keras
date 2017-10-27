@@ -290,11 +290,17 @@ def get_args():
     parser.add_argument("-mc", "--manual_config", action="store_true", default=False,
                         help="Only used in 'generate' mode. If no config file exists, the required"
                              " values can be entered manually.")
+    parser.add_argument("--agg", action="store_true", default=False,
+                        help="Agg backend is used for matplotlib.")
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     args = get_args()
+    if args.agg:
+        import matplotlib as mpl
+        mpl.add("Agg")
+        AGG = True
     if args.mode == "train":
         g_model = default_generator_model
         d_model = default_discriminator_model
