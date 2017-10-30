@@ -38,7 +38,8 @@ def get_config_manually(nice=True):
 
 def train(dataset="mnist", batch_size=128, epochs=100, noise_size=100, location=None,
           generator_model=None, discriminator_model=None, g_optimizer=None,
-          d_optimizer=None, gan_optimizer=None, save_model_frequency=10):
+          d_optimizer=None, gan_optimizer=None, save_model_frequency=10, save_images_frequency=100,
+          d_repetitions=1, g_repetitions=1, freeze_d_in_gan=False):
     """
     default location: "output/dataset/data_time"
     default g_optimizer: SGD()
@@ -86,7 +87,9 @@ def train(dataset="mnist", batch_size=128, epochs=100, noise_size=100, location=
     d.compile(loss='binary_crossentropy', optimizer=d_optimizer)
     g = generator_model(noise_size, input_shape)  # Maps noise to image
     g.compile(loss='binary_crossentropy', optimizer=g_optimizer)
-    d.trainable = False  # In gan model, discriminator weights are frozen
+    # For some reason, results are often better if d is not frozen
+    if freeze_d_in_gan:
+        d.trainable = False  # In gan model, discriminator weights are frozen
     gan = Sequential()
     gan.add(g)
     gan.add(d)
@@ -132,32 +135,35 @@ def train(dataset="mnist", batch_size=128, epochs=100, noise_size=100, location=
         d_losses = []
         g_losses = []
         for batch in range(batches):
-            # Generate fake images with generator
-            noise = np.random.uniform(-1, 1, size=(batch_size, noise_size))
-            x_fake = g.predict(noise, verbose=0)
-            # Get batch real training data
-            x_real = x_train[batch * batch_size:(batch + 1) * batch_size]
-            # Create dataset with labels: first half is real (1), second half is fake (0)
-            x = np.concatenate((x_real, x_fake))
-            y = [1] * batch_size + [0] * batch_size
-            # Calculate discriminator loss from dataset X and y
-            d_loss = d.train_on_batch(x, y)
-            d_losses.append(d_loss)
+            for _ in range(d_repetitions):
+                # Generate fake images with generator
+                noise = np.random.uniform(-1, 1, size=(batch_size, noise_size))
+                x_fake = g.predict(noise, verbose=0)
+                # Get batch real training data
+                x_real = x_train[batch * batch_size:(batch + 1) * batch_size]
+                # Create dataset with labels: first half is real (1), second half is fake (0)
+                x = np.concatenate((x_real, x_fake))
+                y = [1] * batch_size + [0] * batch_size
+                # Calculate discriminator loss from dataset X and y
+                d_loss = d.train_on_batch(x, y)
+                d_losses.append(d_loss)
 
-            # Generate fake images with generator
-            noise = np.random.uniform(-1, 1, (batch_size, noise_size))
-            # Calculate generator loss from noise
-            g_loss = gan.train_on_batch(noise, [1] * batch_size)
-            g_losses.append(g_loss)
+            for _ in range(g_repetitions):
+                # Generate fake images with generator
+                noise = np.random.uniform(-1, 1, (batch_size, noise_size))
+                # Calculate generator loss from noise
+                g_loss = gan.train_on_batch(noise, [1] * batch_size)
+                g_losses.append(g_loss)
 
-            # Save an image and print some feedback messages
+            # Print feedback messages
             if (batch + 1) % 20 == 0:
                 # Print feedback messages for G and D
                 if (batch + 1) % 100 == 20:
                     print(get_current_time())
                 print(d_str.format(epoch, batch + 1, d_loss))
                 print(g_str.format(epoch, batch + 1, g_loss))
-                # Save sample image
+            # Save sample image
+            if (batch + 1) % save_images_frequency == 0:
                 save_images_combined(x_fake, "{}/{:03d}_{:03d}.png".format(location, epoch,
                                                                            batch + 1))
 
@@ -300,6 +306,7 @@ if __name__ == "__main__":
     if args.agg:
         import matplotlib as mpl
         mpl.add("Agg")
+        global AGG
         AGG = True
     if args.mode == "train":
         g_model = default_generator_model
