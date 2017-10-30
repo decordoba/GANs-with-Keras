@@ -290,6 +290,19 @@ def get_args():
     parser.add_argument("-sf", "--save_frequency", type=int, default=10, help="Only used in "
                         "'train' mode. How often a new weights file is created (how many epochs "
                         "between the different weight files are created). Default is 10.")
+    parser.add_argument("-if", "--images_frequency", type=int, default=100, help="Only used in "
+                        "'train' mode. How often new images are saved (how many batchs "
+                        "between images are saved). Default is 100.")
+    parser.add_argument("-rg", "--repetitions_generator", type=int, default=1, help="Only used "
+                        "in 'train' mode. How many times we train the generator every batch. "
+                        "Default is 1.")
+    parser.add_argument("-rd", "--repetitions_discriminator", type=int, default=1, help="Only "
+                        "used in 'train' mode. How many times we train the discriminator every "
+                        "batch. Default is 1.")
+    parser.add_argument("-fd", "--freeze_discriminator", dest="freeze", action="store_true",
+                        default=False, help="Only used in 'train' mode. Freeze the discriminator"
+                        " when training the full GAN. This should be the default mode, but I get"
+                        " better results when it is not frozen.")
     parser.add_argument("-n", "--nice", dest="nice", action="store_true", default=False,
                         help="Only used in 'generate' mode. Generate more samples and show only "
                              "the ones that scored higher according to the discriminator.")
@@ -312,9 +325,10 @@ if __name__ == "__main__":
         g_model = default_generator_model
         d_model = default_discriminator_model
         train(batch_size=args.batch_size, dataset=args.dataset, location=args.folder,
-              epochs=args.number_epochs, noise_size=args.noise_size,
-              save_model_frequency=args.save_frequency, generator_model=g_model,
-              discriminator_model=d_model)
+              epochs=args.number_epochs, noise_size=args.noise_size, freeze_d_in_gan=args.freeze,
+              save_model_frequency=args.save_frequency, g_repetitions=args.repetitions_generator,
+              d_repetitions=args.repetitions_discriminator, generator_model=g_model,
+              save_images_frequency=args.images_frequency, discriminator_model=d_model)
     elif args.mode == "generate":
         generate(batch_size=args.batch_size, location=args.folder, filename=None, nice=args.nice,
                  manual_config=args.manual_config)
